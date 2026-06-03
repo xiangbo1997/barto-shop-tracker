@@ -20,6 +20,9 @@ RUN bun install --frozen-lockfile
 COPY packages ./packages
 COPY apps/web ./apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
+# Next 在 build 时求值并固化 rewrites 的 destination，故必须 build 前注入容器内 API 地址。
+# barto 容器拓扑固定（compose 服务名恒为 api），烤进产物可接受。
+ENV API_INTERNAL_URL=http://api:3001
 RUN bun run --cwd apps/web build
 
 # ── 运行层：复用 builder 的完整产物，用 next start ──
