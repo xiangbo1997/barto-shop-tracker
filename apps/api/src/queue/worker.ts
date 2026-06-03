@@ -126,7 +126,7 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
           status: 'success',
           startedAt,
           finishedAt: new Date(),
-          details: { expanded: result.expanded, groupId: result.groupId },
+          details: { expanded: result.expanded },
         });
         return;
       }
