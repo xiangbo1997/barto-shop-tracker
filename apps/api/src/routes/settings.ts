@@ -100,18 +100,20 @@ settingsRoute.post('/test-llm', async (c) => {
   const baseUrl = await getSetting('LLM_BASE_URL', env.LLM_BASE_URL ?? '');
   const apiKey = await getSetting('LLM_API_KEY', env.LLM_API_KEY ?? '');
   const model = await getSetting('LLM_MODEL', env.LLM_MODEL);
-  if (!baseUrl || !apiKey) return c.json({ ok: false, error: '未配置 LLM base_url / key' }, 400);
+  // 注意：测试结果（含失败）一律用 HTTP 200 + body.ok 表达。
+  // 不能用 5xx——Cloudflare/代理会用自己的错误页替换 body，导致真实错误信息丢失。
+  if (!baseUrl || !apiKey) return c.json({ ok: false, error: '未配置 LLM base_url / key' });
 
   try {
     const { default: OpenAI } = await import('openai');
-    const client = new OpenAI({ baseURL: baseUrl, apiKey });
+    const client = new OpenAI({ baseURL: baseUrl, apiKey, timeout: 20_000, maxRetries: 0 });
     const r = await client.chat.completions.create({
       model: model ?? 'gpt-4o-mini',
       messages: [{ role: 'user', content: 'ping，只回 pong' }],
       max_tokens: 5,
     });
-    return c.json({ ok: true, reply: r.choices[0]?.message?.content ?? '' });
+    return c.json({ ok: true, reply: r.choices[0]?.message?.content ?? '(空响应)' });
   } catch (err) {
-    return c.json({ ok: false, error: err instanceof Error ? err.message : 'LLM 调用失败' }, 502);
+    return c.json({ ok: false, error: err instanceof Error ? err.message : 'LLM 调用失败' });
   }
 });
