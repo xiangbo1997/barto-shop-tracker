@@ -39,7 +39,7 @@ docker-compose.yml    PostgreSQL 16
 
 - **Tier 0**：Bun fetch + OG/JSON-LD 静态提取（最快）
 - **Tier 1**：Playwright + stealth + XHR sniffer（默认层，处理 SPA + WAF）
-- **Tier 2**：LLM 视觉提取（规划中，env 开关 `FEATURE_LLM_ENABLED` 预留）
+- **Tier 2**：自建反爬平台兜底（过 Cloudflare + SPA 渲染，返回 HTML 复用本地解析器；需 `SCRAPE_API_KEY`）
 
 详见 `/Users/shamoyulvren/.claude/plans/ux-web-abstract-barto.md`。
 

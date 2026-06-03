@@ -1,0 +1,77 @@
+# barto 生产部署：api + web + postgres 三服务，全部端口绑 127.0.0.1（仅本机/SSH 隧道访问）。
+# 用法（服务器上）：
+#   docker compose -f docker-compose.prod.yml up -d --build
+# PostgreSQL 映射到宿主 15432（避开宿主已占用的 5432）。
+#
+# 需要在同目录提供 .env（含 LLM_API_KEY / SCRAPE_API_KEY 等，不进 git）。
+
+name: barto
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: barto-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: barto
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-barto_dev}
+      POSTGRES_DB: barto
+    # 仅本机可达；容器间通过服务名 postgres:5432 通信（不经此映射）。
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - barto_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barto -d barto"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - barto
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: barto-api
+    container_name: barto-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # 容器内连 postgres 服务名；忽略 .env 里的 localhost DATABASE_URL。
+      DATABASE_URL: postgresql://barto:${POSTGRES_PASSWORD:-barto_dev}@postgres:5432/barto
+      API_PORT: 3001
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:3001:3001"
+    networks:
+      - barto
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: barto-web
+    container_name: barto-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      # web 的 /api/* rewrite 在容器内指向 api 服务名。
+      API_INTERNAL_URL: http://api:3001
+      PORT: 3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - barto
+
+volumes:
+  barto_pg_data:
+    name: barto_pg_data
+
+networks:
+  barto:
+    name: barto_net

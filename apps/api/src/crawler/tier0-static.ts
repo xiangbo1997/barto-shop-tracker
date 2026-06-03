@@ -54,8 +54,29 @@ export async function fetchHtml(url: string, options: Tier0Options = {}): Promis
   }
 }
 
-function isHit(result: ScrapeResult): boolean {
+export function isHit(result: ScrapeResult): boolean {
   return Boolean(result.title) && (result.price !== null || result.imageUrl !== null);
+}
+
+/**
+ * 从 HTML 解析出 ScrapeResult（JSON-LD + OpenGraph 合并）。
+ * 供 Tier 0（本地 fetch 的 HTML）与 Tier 2（scrape 平台返回的 HTML）共用。
+ */
+export function parseHtmlToResult(html: string, tierUsed: ScrapeResult['tierUsed']): ScrapeResult | null {
+  const ld = parseJsonLd(html);
+  const og = parseOpenGraph(html);
+  if (!ld && !og) return null;
+
+  return {
+    title: ld?.title ?? og?.title ?? null,
+    price: ld?.price ?? og?.price ?? null,
+    currency: ld?.currency ?? og?.currency ?? null,
+    imageUrl: ld?.imageUrl ?? og?.imageUrl ?? null,
+    stockStatus: ld?.stockStatus ?? og?.stockStatus ?? 'unknown',
+    brand: ld?.brand ?? null,
+    sku: ld?.sku ?? null,
+    tierUsed,
+  };
 }
 
 export interface Tier0Result {
@@ -70,24 +91,10 @@ export async function scrapeTier0(url: string, options: Tier0Options = {}): Prom
     return { hit: false, data: null, fetchError: fetched.error };
   }
 
-  const html = fetched.html;
-  const ld = parseJsonLd(html);
-  const og = parseOpenGraph(html);
-
-  if (!ld && !og) {
+  const merged = parseHtmlToResult(fetched.html, FETCH_TIER.STATIC);
+  if (!merged) {
     return { hit: false, data: null, fetchError: null };
   }
-
-  const merged: ScrapeResult = {
-    title: ld?.title ?? og?.title ?? null,
-    price: ld?.price ?? og?.price ?? null,
-    currency: ld?.currency ?? og?.currency ?? null,
-    imageUrl: ld?.imageUrl ?? og?.imageUrl ?? null,
-    stockStatus: ld?.stockStatus ?? og?.stockStatus ?? 'unknown',
-    brand: ld?.brand ?? null,
-    sku: ld?.sku ?? null,
-    tierUsed: FETCH_TIER.STATIC,
-  };
 
   return {
     hit: isHit(merged),

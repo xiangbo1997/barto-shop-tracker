@@ -1,6 +1,7 @@
 import { FETCH_TIER, type ScrapeResult } from '@barto/shared';
 import { scrapeTier0, type Tier0Result } from './tier0-static.ts';
 import { scrapeTier1, type Tier1Result } from './tier1-browser.ts';
+import { scrapeTier2, type Tier2Result } from './tier2-scrape.ts';
 
 export interface ScrapeOptions {
   defaultTier?: 0 | 1 | 2;
@@ -34,13 +35,21 @@ export async function scrape(url: string, options: ScrapeOptions = {}): Promise<
     return { data: t1.data, fetchError: null, attempts, finalUrl };
   }
 
+  // Tier 2 兜底：本地 Playwright 也失败时，调自建反爬平台过盾抓取。
+  // 显式跳过 defaultTier===2 的重复（若调用方直接指定 tier2 也走这里）。
+  const t2 = await scrapeTier2(url);
+  attempts.push({ tier: 2, hit: t2.hit, error: t2.fetchError });
+  if (t2.hit && t2.data) {
+    return { data: t2.data, fetchError: null, attempts, finalUrl };
+  }
+
   return {
     data: null,
-    fetchError: t1.fetchError ?? 'all tiers failed',
+    fetchError: t2.fetchError ?? t1.fetchError ?? 'all tiers failed',
     attempts,
     finalUrl,
   };
 }
 
-export { scrapeTier0, scrapeTier1, FETCH_TIER };
-export type { Tier0Result, Tier1Result };
+export { scrapeTier0, scrapeTier1, scrapeTier2, FETCH_TIER };
+export type { Tier0Result, Tier1Result, Tier2Result };

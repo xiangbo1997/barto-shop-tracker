@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --env-file=../../.env run --hot src/index.ts",
     "start": "bun --env-file=../../.env run src/index.ts",
+    "start:docker": "bun run src/index.ts",
     "build": "bun build src/index.ts --target=bun --outdir=dist",
     "scrape": "bun --env-file=../../.env run src/cli/scrape.ts",
     "typecheck": "tsc --noEmit"

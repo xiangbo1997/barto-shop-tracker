@@ -19,6 +19,14 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  // Tier 2 兜底：自建反爬抓取平台（过 Cloudflare + SPA 渲染，返回 HTML/Markdown）。
+  SCRAPE_API_URL: z.string().url().default('https://scrape.cloudsentryai.com'),
+  SCRAPE_API_KEY: z.string().min(1).optional(),
+  SCRAPE_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
+  FEATURE_TIER2_SCRAPE: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   FEATURE_LLM_ENABLED: z
     .enum(['true', 'false'])
     .default('true')
