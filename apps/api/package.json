@@ -1,0 +1,38 @@
+{
+  "name": "@barto/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --env-file=../../.env run --hot src/index.ts",
+    "start": "bun --env-file=../../.env run src/index.ts",
+    "build": "bun build src/index.ts --target=bun --outdir=dist",
+    "scrape": "bun --env-file=../../.env run src/cli/scrape.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@barto/db": "workspace:*",
+    "@barto/shared": "workspace:*",
+    "drizzle-orm": "^0.36.0",
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "metascraper": "^5.45.0",
+    "metascraper-title": "^5.45.0",
+    "metascraper-image": "^5.45.0",
+    "metascraper-description": "^5.45.0",
+    "metascraper-url": "^5.45.0",
+    "metascraper-amazon": "^5.45.0",
+    "cheerio": "^1.0.0",
+    "zod": "^3.23.0",
+    "pg-boss": "^10.1.6",
+    "playwright": "^1.49.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "openai": "^4.73.0",
+    "fuse.js": "^7.0.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

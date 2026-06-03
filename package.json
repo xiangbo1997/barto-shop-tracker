@@ -1,0 +1,31 @@
+{
+  "name": "barto-shop-tracker",
+  "version": "0.0.1",
+  "private": true,
+  "description": "海淘商品聚合比价工具 — 自用、单机、≤100 URL",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter='*' dev",
+    "build": "bun run --filter='*' build",
+    "typecheck": "bun run --filter='*' typecheck",
+    "test": "bun test",
+    "db:push": "bun run --cwd packages/db push",
+    "db:studio": "bun run --cwd packages/db studio",
+    "scrape": "bun run --cwd apps/api scrape",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.0"
+  },
+  "trustedDependencies": [
+    "sharp",
+    "@swc/core",
+    "esbuild"
+  ]
+}

@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: barto-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: barto
+      POSTGRES_PASSWORD: barto_dev
+      POSTGRES_DB: barto
+    ports:
+      - "5432:5432"
+    volumes:
+      - barto_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barto -d barto"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  barto_pg_data:
+    name: barto_pg_data

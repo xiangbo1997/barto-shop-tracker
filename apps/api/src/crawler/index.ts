@@ -1,0 +1,46 @@
+import { FETCH_TIER, type ScrapeResult } from '@barto/shared';
+import { scrapeTier0, type Tier0Result } from './tier0-static.ts';
+import { scrapeTier1, type Tier1Result } from './tier1-browser.ts';
+
+export interface ScrapeOptions {
+  defaultTier?: 0 | 1 | 2;
+  timeoutMs?: number;
+}
+
+export interface ScrapeOutcome {
+  data: ScrapeResult | null;
+  fetchError: string | null;
+  attempts: Array<{ tier: 0 | 1 | 2; hit: boolean; error: string | null; elapsedMs?: number }>;
+  finalUrl: string;
+}
+
+export async function scrape(url: string, options: ScrapeOptions = {}): Promise<ScrapeOutcome> {
+  const defaultTier = options.defaultTier ?? 1;
+  const attempts: ScrapeOutcome['attempts'] = [];
+  let finalUrl = url;
+
+  if (defaultTier === 0) {
+    const t0 = await scrapeTier0(url, { timeoutMs: options.timeoutMs });
+    attempts.push({ tier: 0, hit: t0.hit, error: t0.fetchError });
+    if (t0.hit && t0.data) {
+      return { data: t0.data, fetchError: null, attempts, finalUrl };
+    }
+  }
+
+  const t1 = await scrapeTier1(url, { timeoutMs: options.timeoutMs });
+  finalUrl = t1.finalUrl;
+  attempts.push({ tier: 1, hit: t1.hit, error: t1.fetchError, elapsedMs: t1.elapsedMs });
+  if (t1.hit && t1.data) {
+    return { data: t1.data, fetchError: null, attempts, finalUrl };
+  }
+
+  return {
+    data: null,
+    fetchError: t1.fetchError ?? 'all tiers failed',
+    attempts,
+    finalUrl,
+  };
+}
+
+export { scrapeTier0, scrapeTier1, FETCH_TIER };
+export type { Tier0Result, Tier1Result };
