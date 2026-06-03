@@ -24,11 +24,10 @@ RUN bun run --cwd apps/web build
 FROM oven/bun:1.3.3-debian AS runtime
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
-# Next standalone 把 server.js 放在 apps/web 路径下（monorepo 结构保留）
+# 实测：Bun workspace 下 Next standalone 把 server.js 扁平化到 standalone 顶层
+# （非 apps/web 嵌套），故 static 也对应放到 standalone 根的 .next/static。
 COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-# 本项目无 public/ 目录，故不拷贝（Next standalone 不强制需要）
-WORKDIR /app/apps/web
-# standalone server.js 用 node 运行（Next 产物面向 node）；绑 0.0.0.0 由 compose 端口映射限制到 127.0.0.1
+COPY --from=builder /app/apps/web/.next/static ./.next/static
+# server.js 在 /app 顶层；绑 0.0.0.0 由 compose 端口映射限制到 127.0.0.1
 ENV PORT=3000 HOSTNAME=0.0.0.0
 CMD ["bun", "server.js"]
