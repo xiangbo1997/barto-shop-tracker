@@ -38,6 +38,19 @@ export async function scrape(url: string, options: ScrapeOptions = {}): Promise<
   const attempts: ScrapeOutcome['attempts'] = [];
   let finalUrl = url;
 
+  // 店铺/列表页：在单品抓取之前直接判定走展开。
+  // 否则单品抓取会从多商品页提取出"第一个商品"的脏数据（库存/价格混入页面其他商品），
+  // hit=true 而当成单品处理，导致库存等判断错误（如 caowo.store 有货被误判缺货）。
+  if (looksLikeShopListing(url)) {
+    return {
+      data: null,
+      fetchError: '店铺/列表页：将尝试展开为多个商品（需配置 LLM）。',
+      attempts,
+      finalUrl,
+      isShopListing: true,
+    };
+  }
+
   if (defaultTier === 0) {
     const t0 = await scrapeTier0(url, { timeoutMs: options.timeoutMs });
     attempts.push({ tier: 0, hit: t0.hit, error: t0.fetchError });
