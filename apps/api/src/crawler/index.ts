@@ -57,10 +57,14 @@ export async function scrape(url: string, options: ScrapeOptions = {}): Promise<
     return { data: t2.data, fetchError: null, attempts, finalUrl };
   }
 
+  // [TEMP DEBUG] 定位店铺检测为何不触发
+  console.log('[scrape:debug]', JSON.stringify({
+    url, finalUrl,
+    t1hit: t1.hit, t2hit: t2.hit,
+    shopUrl: looksLikeShopListing(url), shopFinal: looksLikeShopListing(finalUrl),
+  }));
+
   // 全部 tier 都没"命中"（提取到可用商品）：若像店铺列表页，给可操作引导。
-  // 注意用 hit 而非 data：店铺页常有 og:title(店铺名)+og:image，
-  // 会让 parseHtmlToResult 返回非空 data（有标题无价格），但 hit=false。
-  // 用原始 url 判断（finalUrl 可能被 tier1 重定向改写，失去 /shop 路径特征）。
   if (!t1.hit && !t2.hit && (looksLikeShopListing(url) || looksLikeShopListing(finalUrl))) {
     return {
       data: null,
