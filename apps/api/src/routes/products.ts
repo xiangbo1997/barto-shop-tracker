@@ -92,15 +92,8 @@ productsRoute.get('/', async (c) => {
   return c.json({ data: rows, count: rows.length, summary, limit, offset, sort });
 });
 
-productsRoute.get('/:id', async (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ error: 'invalid id' }, 400);
-  const row = await db.select().from(products).where(eq(products.id, id)).limit(1);
-  if (!row[0]) return c.json({ error: 'not found' }, 404);
-  return c.json({ data: row[0] });
-});
-
-/** GET /products/categories —— 各分类商品计数（供顶部 tab）。 */
+/** GET /products/categories —— 各分类商品计数（供顶部 tab）。
+ *  必须在 /:id 之前注册，否则 "categories" 被当作 id 拦截。 */
 productsRoute.get('/categories', async (c) => {
   const rows = await db
     .select({ category: products.category, count: sql<number>`count(*)::int` })
@@ -114,6 +107,14 @@ productsRoute.get('/categories', async (c) => {
     total += r.count;
   }
   return c.json({ data: counts, total });
+});
+
+productsRoute.get('/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isFinite(id)) return c.json({ error: 'invalid id' }, 400);
+  const row = await db.select().from(products).where(eq(products.id, id)).limit(1);
+  if (!row[0]) return c.json({ error: 'not found' }, 404);
+  return c.json({ data: row[0] });
 });
 
 /** GET /products/:id/history —— 价格历史时序（供趋势图，按时间升序）。 */
