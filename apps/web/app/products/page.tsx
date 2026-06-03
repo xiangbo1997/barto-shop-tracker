@@ -199,6 +199,12 @@ function ProductsInner() {
           <div className="empty-title">{groups.length > 0 ? '全部已归组' : '还没有商品'}</div>
           <div>放宽筛选，或 <a href="/import">导入第一批 URL →</a></div>
         </div>
+      ) : view === 'card' ? (
+        <div className="group-grid">
+          {ungrouped.map((p) => (
+            <ProductCard key={p.id} p={p} refreshing={refreshingIds.has(p.id)} onRefresh={() => refreshOne.mutate(p.id)} />
+          ))}
+        </div>
       ) : (
         <table>
           <tbody>{ungrouped.map((p) => <ProductRow key={p.id} p={p} refreshing={refreshingIds.has(p.id)} onRefresh={() => refreshOne.mutate(p.id)} />)}</tbody>
@@ -280,6 +286,43 @@ function GroupCard({ group }: { group: ProductGroup }) {
         <span className="btn-outline">查看对比</span>
       </div>
     </a>
+  );
+}
+
+function ProductCard({ p, refreshing, onRefresh }: { p: Product; refreshing: boolean; onRefresh: () => void }) {
+  const inStock = p.stockStatus === 'in_stock';
+  const fresh = viewFreshness(p);
+  const sl = STOCK_LABELS[p.stockStatus] ?? STOCK_LABELS.unknown!;
+  const outOnly = p.stockStatus === 'out_of_stock';
+  return (
+    <div className={`gcard ${outOnly ? 'out' : ''}`}>
+      <div className="gcard-head">
+        <SiteIcon sourceSite={p.sourceSite} />
+        <span className="gcard-title">{p.title ?? <span className="muted">(无标题)</span>}</span>
+      </div>
+      <div>
+        <div className={`gcard-price ${inStock && p.currentPrice ? '' : 'na'}`}>{fmtMoney(p.currentPrice, p.currency)}</div>
+        <div className="gcard-status">
+          <span className={`badge ${sl.cls}`}>{sl.label}</span>
+          <span className="muted" style={{ fontSize: 12 }}>· {catLabel(p.category)}</span>
+        </div>
+      </div>
+      {p.fetchError ? (
+        <div style={{ fontSize: 11, color: 'var(--red)' }}>{p.fetchError}</div>
+      ) : (
+        <div className="gcard-channel">
+          <div className="lbl">来源</div>
+          <div className="val"><SiteIcon sourceSite={p.sourceSite} /><span className="t">{p.sourceSite}</span></div>
+        </div>
+      )}
+      <div className="gcard-foot">
+        <span className="muted" style={{ fontSize: 12 }} suppressHydrationWarning>{fmtAgo(p.verifiedAt ?? p.lastFetchedAt)}</span>
+        <div className="row" style={{ gap: 4 }}>
+          <button className="icon" onClick={onRefresh} disabled={refreshing} title="刷新">{refreshing ? <span className="spinner" /> : '↻'}</button>
+          <a className="button icon" href={p.url} target="_blank" rel="noreferrer" title="跳转原站">↗</a>
+        </div>
+      </div>
+    </div>
   );
 }
 
