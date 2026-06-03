@@ -20,8 +20,9 @@ COPY apps/web ./apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN bun run --cwd apps/web build
 
-# ── 运行层：仅拷 standalone 产物 ──
-FROM oven/bun:1.3.3-debian AS runtime
+# ── 运行层：用 node 跑 standalone（Next standalone 官方面向 node；
+#    实测 bun 解析 standalone 裁剪后的 node_modules/next 会 ENOENT）──
+FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 # 实测：Bun workspace 下 Next standalone 把 server.js 扁平化到 standalone 顶层
@@ -30,4 +31,4 @@ COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./.next/static
 # server.js 在 /app 顶层；绑 0.0.0.0 由 compose 端口映射限制到 127.0.0.1
 ENV PORT=3000 HOSTNAME=0.0.0.0
-CMD ["bun", "server.js"]
+CMD ["node", "server.js"]
