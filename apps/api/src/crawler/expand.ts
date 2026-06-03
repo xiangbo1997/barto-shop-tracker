@@ -1,6 +1,6 @@
 import { db, products } from '@barto/db';
 import { eq } from 'drizzle-orm';
-import { computeExpiresAt, computeFreshness, FETCH_TIER } from '@barto/shared';
+import { classifyTitle, computeExpiresAt, computeFreshness, FETCH_TIER } from '@barto/shared';
 import { getHostFromUrl } from './normalize.ts';
 import { expandListingWithLlm } from './llm-list.ts';
 
@@ -37,6 +37,7 @@ export async function expandShopListing(shopUrl: string, parentProductId: number
     const expiresAt = computeExpiresAt(tier, now);
     const childUrl = it.buyUrl ?? `${shopUrl}#${encodeURIComponent(it.title.slice(0, 64))}`;
     const hasPrice = it.price != null;
+    const category = classifyTitle(it.title);
 
     await db
       .insert(products)
@@ -48,6 +49,7 @@ export async function expandShopListing(shopUrl: string, parentProductId: number
         currency: it.currency,
         stockStatus: it.stockStatus,
         fetchTierUsed: tier,
+        category,
         lastFetchedAt: now,
         lastSuccessAt: hasPrice ? now : null,
         verifiedAt: hasPrice ? now : null,
@@ -62,6 +64,7 @@ export async function expandShopListing(shopUrl: string, parentProductId: number
           currency: it.currency,
           stockStatus: it.stockStatus,
           fetchTierUsed: tier,
+          category,
           lastFetchedAt: now,
           lastSuccessAt: hasPrice ? now : null,
           verifiedAt: hasPrice ? now : null,

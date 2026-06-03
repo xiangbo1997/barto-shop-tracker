@@ -104,6 +104,57 @@ export type SourceHealth = (typeof SOURCE_HEALTH)[keyof typeof SOURCE_HEALTH];
 // 连续失败达到此阈值，来源标记为 failing。
 export const SOURCE_FAILING_THRESHOLD = 3;
 
+// ─────────────────────────────────────────────
+// 通用商品分类（面向任意海淘，非固定 AI 平台）
+// ─────────────────────────────────────────────
+
+export const CATEGORY = {
+  AI_ACCOUNT: 'ai-account',
+  API_CREDIT: 'api-credit',
+  EMAIL: 'email',
+  SUBSCRIPTION: 'subscription',
+  PHYSICAL: 'physical',
+  OTHER: 'other',
+} as const;
+
+export type Category = (typeof CATEGORY)[keyof typeof CATEGORY];
+
+export const CATEGORY_LABELS: Record<Category, string> = {
+  'ai-account': 'AI 账号',
+  'api-credit': 'API / 额度',
+  email: '邮箱',
+  subscription: '订阅 / 会员',
+  physical: '实物',
+  other: '其他',
+};
+
+// 关键词规则（按数组顺序优先匹配；命中即返回）。标题转小写后匹配。
+const CATEGORY_RULES: Array<{ category: Category; keywords: string[] }> = [
+  { category: CATEGORY.API_CREDIT, keywords: ['api', 'cdk', '额度', '中转', 'token', 'key', '余额', 'codex api'] },
+  { category: CATEGORY.EMAIL, keywords: ['邮箱', 'gmail', 'outlook', 'hotmail', 'email', '谷歌邮箱', 'microsoft 邮箱'] },
+  {
+    category: CATEGORY.AI_ACCOUNT,
+    keywords: [
+      'chatgpt', 'gpt', 'claude', 'gemini', 'grok', 'openai', 'plus', 'pro 会员', 'super grok',
+      '普号', '成品号', '账号', '账密', '直登', 'ai ', '会员号',
+    ],
+  },
+  { category: CATEGORY.SUBSCRIPTION, keywords: ['月卡', '年卡', '会员', '订阅', '充值', 'netflix', 'spotify', '续费'] },
+];
+
+/**
+ * 按标题关键词归类。无标题或无命中归 other。
+ * 纯函数，供 worker（写入）与前端（展示标签）共用。
+ */
+export function classifyTitle(title: string | null | undefined): Category {
+  if (!title) return CATEGORY.OTHER;
+  const lower = title.toLowerCase();
+  for (const rule of CATEGORY_RULES) {
+    if (rule.keywords.some((k) => lower.includes(k))) return rule.category;
+  }
+  return CATEGORY.OTHER;
+}
+
 export interface ScrapeResult {
   title: string | null;
   price: number | null;

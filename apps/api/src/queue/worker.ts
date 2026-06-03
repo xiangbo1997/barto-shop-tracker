@@ -8,6 +8,7 @@ import {
 } from '@barto/db';
 import { desc, eq } from 'drizzle-orm';
 import {
+  classifyTitle,
   computeExpiresAt,
   computeFreshness,
   FRESHNESS_STATUS,
@@ -150,6 +151,7 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
           currency: outcome.data.currency,
           stockStatus: outcome.data.stockStatus,
           fetchTierUsed: outcome.data.tierUsed,
+          category: classifyTitle(outcome.data.title),
           fetchError: null,
           lastFetchedAt: now,
           lastSuccessAt: now,

@@ -9,6 +9,7 @@ const listQuerySchema = z.object({
   q: z.string().trim().optional(),
   stock: z.enum(['in_stock', 'out_of_stock', 'unknown']).optional(),
   source: z.string().trim().optional(),
+  category: z.string().trim().optional(),
   // available：有货优先 + 低价（默认，对应 PRODUCT 第 1 原则"可用价优先"）
   // price：纯价格升序；updated：最近更新；created：导入时间
   sort: z.enum(['available', 'price', 'updated', 'created']).default('available'),
@@ -40,7 +41,7 @@ productsRoute.get('/', async (c) => {
   if (!parsed.success) {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
-  const { q, stock, source, sort, limit, offset } = parsed.data;
+  const { q, stock, source, category, sort, limit, offset } = parsed.data;
 
   const conditions = [];
   if (q) {
@@ -51,6 +52,7 @@ productsRoute.get('/', async (c) => {
   }
   if (stock) conditions.push(eq(products.stockStatus, stock));
   if (source) conditions.push(eq(products.sourceSite, source));
+  if (category) conditions.push(eq(products.category, category));
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -96,6 +98,22 @@ productsRoute.get('/:id', async (c) => {
   const row = await db.select().from(products).where(eq(products.id, id)).limit(1);
   if (!row[0]) return c.json({ error: 'not found' }, 404);
   return c.json({ data: row[0] });
+});
+
+/** GET /products/categories —— 各分类商品计数（供顶部 tab）。 */
+productsRoute.get('/categories', async (c) => {
+  const rows = await db
+    .select({ category: products.category, count: sql<number>`count(*)::int` })
+    .from(products)
+    .groupBy(products.category);
+  const counts: Record<string, number> = {};
+  let total = 0;
+  for (const r of rows) {
+    const key = r.category ?? 'other';
+    counts[key] = (counts[key] ?? 0) + r.count;
+    total += r.count;
+  }
+  return c.json({ data: counts, total });
 });
 
 /** GET /products/:id/history —— 价格历史时序（供趋势图，按时间升序）。 */

@@ -11,7 +11,7 @@ import Fuse from 'fuse.js';
 
 export const groupsRoute = new Hono();
 
-/** GET /groups —— 列出所有商品组（含成员统计与最低可用价）。 */
+/** GET /groups —— 列出所有商品组（含成员统计、最低可用价、最低渠道信息）。 */
 groupsRoute.get('/', async (c) => {
   const groups = await db
     .select()
@@ -19,7 +19,20 @@ groupsRoute.get('/', async (c) => {
     .orderBy(desc(productGroups.updatedAt));
 
   const withStats = await Promise.all(
-    groups.map(async (g) => ({ ...g, stats: await getGroupStats(g.id) }))
+    groups.map(async (g) => {
+      const stats = await getGroupStats(g.id);
+      // 最低渠道：lowestPriceProductId 指向的 product 的来源 + 原始标题
+      let lowestChannel: { sourceSite: string; title: string | null } | null = null;
+      if (g.lowestPriceProductId != null) {
+        const lp = await db
+          .select({ sourceSite: products.sourceSite, title: products.title })
+          .from(products)
+          .where(eq(products.id, g.lowestPriceProductId))
+          .limit(1);
+        if (lp[0]) lowestChannel = lp[0];
+      }
+      return { ...g, stats, lowestChannel };
+    })
   );
   return c.json({ data: withStats, count: withStats.length });
 });

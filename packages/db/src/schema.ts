@@ -52,6 +52,8 @@ export const products = pgTable(
     freshnessStatus: varchar('freshness_status', { length: 16 }).default('fresh').notNull(),
     fetchError: text('fetch_error'),
     fetchTierUsed: smallint('fetch_tier_used'),
+    // 通用分类（ai-account/email/api-credit/subscription/physical/other），供顶部 tab 过滤。
+    category: varchar('category', { length: 32 }),
     groupId: integer('group_id'),
     userNote: text('user_note'),
     manuallyEdited: boolean('manually_edited').default(false).notNull(),
@@ -64,6 +66,7 @@ export const products = pgTable(
     groupIdx: index('products_group_idx').on(t.groupId),
     stockIdx: index('products_stock_idx').on(t.stockStatus),
     freshnessIdx: index('products_freshness_idx').on(t.freshnessStatus),
+    categoryIdx: index('products_category_idx').on(t.category),
   })
 );
 

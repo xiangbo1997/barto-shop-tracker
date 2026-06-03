@@ -18,6 +18,7 @@ export interface Product {
   freshnessStatus: FreshnessStatus;
   fetchError: string | null;
   fetchTierUsed: number | null;
+  category: string | null;
   groupId: number | null;
   userNote: string | null;
   manuallyEdited: boolean;
@@ -66,13 +67,14 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const apiClient = {
-  listProducts: (params: { q?: string; stock?: string; source?: string; sort?: ProductSort } = {}) => {
+  listProducts: (params: { q?: string; stock?: string; source?: string; category?: string; sort?: ProductSort } = {}) => {
     const search = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) {
       if (v) search.set(k, String(v));
     }
     return api<ProductListResponse>(`/products?${search.toString()}`);
   },
+  categories: () => api<{ data: Record<string, number>; total: number }>('/products/categories'),
   ingest: (urls: string[]) =>
     api<{ accepted: number; rejected: number; items: Array<{ id: number; url: string; isNew: boolean }>; failed: Array<{ url: string; reason: string }> }>(
       '/ingest',
@@ -191,6 +193,7 @@ export interface ProductGroup {
   createdAt: string;
   updatedAt: string;
   stats: GroupStats;
+  lowestChannel?: { sourceSite: string; title: string | null } | null;
 }
 
 export interface GroupDetail extends ProductGroup {
