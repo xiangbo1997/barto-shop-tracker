@@ -58,7 +58,8 @@ export async function scrape(url: string, options: ScrapeOptions = {}): Promise<
   }
 
   // 全部 tier 都没提取到 data：若像店铺列表页，给可操作的引导提示。
-  if (!t1.data && !t2.data && looksLikeShopListing(finalUrl)) {
+  // 用原始 url 判断（finalUrl 可能被 tier1 重定向改写，失去 /shop 路径特征）。
+  if (!t1.data && !t2.data && (looksLikeShopListing(url) || looksLikeShopListing(finalUrl))) {
     return {
       data: null,
       fetchError: '这看起来是店铺/列表页（含多个商品），barto 仅支持单个商品链接。请打开具体商品后复制其购买链接再导入。',
