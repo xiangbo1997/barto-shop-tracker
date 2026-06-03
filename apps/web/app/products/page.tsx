@@ -166,7 +166,7 @@ function ProductsInner() {
       {/* 商品组比价表 */}
       {groups.length > 0 ? (
         view === 'card' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 14, marginBottom: 24 }}>
+          <div className="group-grid">
             {groups.map((g) => <GroupCard key={g.id} group={g} />)}
           </div>
         ) : (
@@ -245,12 +245,40 @@ function GroupRow({ group }: { group: ProductGroup }) {
 
 function GroupCard({ group }: { group: ProductGroup }) {
   const hasPrice = group.lowestPrice != null;
+  const { inStock, outOfStock, total } = group.stats;
+  const ch = group.lowestChannel;
+  const outOnly = !hasPrice && outOfStock > 0;
   return (
-    <a href={`/groups/${group.id}`} className="panel" style={{ padding: 18, display: 'block', textDecoration: 'none' }}>
-      <div className="group-title" style={{ marginBottom: 8 }}>{group.canonicalTitle}</div>
-      {hasPrice ? <div className="price available" style={{ fontSize: 22 }}>{fmtMoney(group.lowestPrice, group.lowestPriceCurrency)}</div> : <div className="price unavailable">暂无可用报价</div>}
-      <div className="group-counts" style={{ marginTop: 8 }}>有货 {group.stats.inStock} · 缺货 {group.stats.outOfStock} · 渠道 {group.stats.total}</div>
-      {group.lowestChannel ? <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>最低：{group.lowestChannel.sourceSite}</div> : null}
+    <a href={`/groups/${group.id}`} className={`gcard ${outOnly ? 'out' : ''}`}>
+      <div className="gcard-head">
+        <span className="site-icon">{group.canonicalTitle.slice(0, 1)}</span>
+        <span className="gcard-title">{group.canonicalTitle}</span>
+      </div>
+      <div>
+        {hasPrice ? (
+          <div className="gcard-price">{fmtMoney(group.lowestPrice, group.lowestPriceCurrency)}</div>
+        ) : (
+          <div className="gcard-price na">¥ --</div>
+        )}
+        <div className="gcard-status">
+          {inStock > 0 ? <span className="status-chip in">有货 {inStock}</span> : null}
+          {outOfStock > 0 ? <span className="status-chip out">缺货 {outOfStock}</span> : null}
+          <span className="muted" style={{ fontSize: 12 }}>· 渠道 {total}</span>
+        </div>
+      </div>
+      {ch ? (
+        <div className="gcard-channel">
+          <div className="lbl">最低渠道</div>
+          <div className="val">
+            <SiteIcon sourceSite={ch.sourceSite} />
+            <span className="t">{ch.sourceSite}{ch.title ? ` · ${ch.title}` : ''}</span>
+          </div>
+        </div>
+      ) : null}
+      <div className="gcard-foot">
+        <span className="muted" style={{ fontSize: 12 }} suppressHydrationWarning>{fmtAgo(group.updatedAt)}</span>
+        <span className="btn-outline">查看对比</span>
+      </div>
     </a>
   );
 }
