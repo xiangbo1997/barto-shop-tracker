@@ -101,7 +101,7 @@ function ProductsInner() {
           <button onClick={() => refreshAll.mutate()} disabled={refreshAll.isPending}>
             {refreshAll.isPending ? '触发中…' : '全量刷新'}
           </button>
-          <a className="button primary" href="/import">+ 导入 URL</a>
+          <a className="button cta" href="/import">+ 导入 URL</a>
         </div>
       </div>
       <p className="muted" style={{ margin: '0 0 16px', fontSize: 13 }}>

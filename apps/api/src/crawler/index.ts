@@ -15,6 +15,20 @@ export interface ScrapeOutcome {
   finalUrl: string;
 }
 
+/**
+ * 启发式判断 URL 是否为「店铺/列表页」（含多个商品），而非单商品页。
+ * barto 提取器只解析单商品页；店铺列表页应引导用户改用单品链接。
+ * 常见发卡/电商平台店铺路径模式：/shop/、/store/、/seller/、/u/、分类页等。
+ */
+function looksLikeShopListing(url: string): boolean {
+  try {
+    const path = new URL(url).pathname.toLowerCase();
+    return /\/(shop|store|seller|merchant|category|cat|list|index)(\/|$)/.test(path) || path === '/' || path === '';
+  } catch {
+    return false;
+  }
+}
+
 export async function scrape(url: string, options: ScrapeOptions = {}): Promise<ScrapeOutcome> {
   const defaultTier = options.defaultTier ?? 1;
   const attempts: ScrapeOutcome['attempts'] = [];
@@ -41,6 +55,18 @@ export async function scrape(url: string, options: ScrapeOptions = {}): Promise<
   attempts.push({ tier: 2, hit: t2.hit, error: t2.fetchError });
   if (t2.hit && t2.data) {
     return { data: t2.data, fetchError: null, attempts, finalUrl };
+  }
+
+  // 全部 tier 都没提取到数据：若像店铺列表页，给可操作的引导提示。
+  const allFailedNoData =
+    !t1.data && !t2.data && (t1.fetchError === null || t2.fetchError === null);
+  if (allFailedNoData && looksLikeShopListing(finalUrl)) {
+    return {
+      data: null,
+      fetchError: '这看起来是店铺/列表页（含多个商品），barto 仅支持单个商品链接。请打开具体商品后复制其购买链接再导入。',
+      attempts,
+      finalUrl,
+    };
   }
 
   return {

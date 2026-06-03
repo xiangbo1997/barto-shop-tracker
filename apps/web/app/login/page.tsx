@@ -10,6 +10,7 @@ function LoginInner() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -59,13 +60,27 @@ function LoginInner() {
 
         <label className="login-field">
           <span>密码</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPw ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              style={{ width: '100%', paddingRight: 44 }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw((v) => !v)}
+              title={showPw ? '隐藏密码' : '显示密码'}
+              style={{
+                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                height: 32, width: 32, padding: 0, background: 'transparent', border: 'none',
+              }}
+            >
+              {showPw ? '🙈' : '👁'}
+            </button>
+          </div>
         </label>
 
         {error ? (

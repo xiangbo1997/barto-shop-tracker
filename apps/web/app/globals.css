@@ -18,9 +18,10 @@
   --border: #e2e6e6;
   --border-strong: #adb3b4;
   --white-tinted: #f8f8f8;
-  /* 语义状态 */
-  --green: #2f7a4b;
-  --green-soft: #e8f3ec;
+  /* 语义状态（向 Stitch 设计校准：绿更鲜亮、对比更强）*/
+  --green: #006d3c;
+  --green-soft: #e6f4ec;
+  --green-bright: #45bf78;
   --red: #9b3328;
   --red-soft: #fbe9e7;
   --yellow: #7a541b;
@@ -89,6 +90,9 @@ button, .button {
 button:hover, .button:hover { background: var(--surface-selected); text-decoration: none; }
 button.primary, .button.primary { background: var(--ink); color: var(--white-tinted); }
 button.primary:hover, .button.primary:hover { background: #000; }
+/* 亮绿 CTA（导入/主操作，正向心理 = 比价省钱）*/
+button.cta, .button.cta { background: var(--green); color: #fff; }
+button.cta:hover, .button.cta:hover { background: #00592f; }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 button.icon { width: 34px; height: 34px; padding: 0; border-radius: 8px; background: var(--surface); }
 
@@ -140,18 +144,24 @@ tr.out-of-stock:hover td { background: #f9f1f0; }
 }
 .site-icon img { width: 100%; height: 100%; object-fit: contain; }
 
-/* ── Metric 摘要 ── */
-.metrics { display: flex; gap: 32px; flex-wrap: wrap; margin: 4px 0 24px; }
-.metric { display: flex; flex-direction: column; gap: 2px; }
+/* ── Metric 摘要（卡片化，校准自 Stitch 设计）── */
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin: 8px 0 24px; }
+.metric {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 16px 20px;
+  background: var(--surface); border-radius: 14px;
+}
 .metric .label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-.metric .value { font-size: 1.625rem; font-weight: 700; color: var(--ink); line-height: 1.1; }
+.metric .value { font-size: 1.75rem; font-weight: 800; color: var(--ink); line-height: 1.1; }
 .metric .value.green { color: var(--green); }
 .metric .value.red { color: var(--red); }
 
-/* ── 价格 ── */
+/* ── 价格（有货价突出：更大更绿）── */
 .price { font-size: 1.05rem; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
-.price.available { color: var(--green); }
+.price.available { color: var(--green); font-weight: 800; }
 .price.unavailable { color: var(--muted); font-weight: 600; }
+/* 组卡片的最低价用更大字号 */
+.group-card .price.available { font-size: 1.25rem; }
 
 /* ── 组卡片 ── */
 .group-card {
