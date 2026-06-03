@@ -5,23 +5,19 @@
 FROM oven/bun:1.3.3-debian AS base
 WORKDIR /app
 
-# ── 依赖层 ──
-FROM base AS deps
+# ── 构建层：拷全部源码后 install，确保各 workspace 子包的 node_modules（含 next bin）齐全 ──
+# 注：Bun workspace 不一定把 next hoisting 到根，bin 在 apps/web/node_modules/.bin，
+# 故不做 deps 分层裁剪，整体 install 后构建，保证 bin 解析正确。
+FROM base AS builder
 COPY package.json bun.lock tsconfig.base.json ./
 COPY apps/web/package.json apps/web/
 COPY apps/api/package.json apps/api/
 COPY packages/db/package.json packages/db/
 COPY packages/shared/package.json packages/shared/
 RUN bun install --frozen-lockfile
-
-# ── 构建层 ──
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json bun.lock tsconfig.base.json ./
 COPY packages ./packages
 COPY apps/web ./apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
-# 从仓库根执行，让 bun 正确解析 workspace 的 next bin（避免 apps/web 下 .bin 缺失）。
 RUN bun run --cwd apps/web build
 
 # ── 运行层：仅拷 standalone 产物 ──
