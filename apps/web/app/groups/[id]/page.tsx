@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type Product } from '../../../lib/api';
 import { fmtAgo, fmtMoney, viewFreshness } from '../../../lib/format';
@@ -13,9 +13,8 @@ const STOCK_LABELS: Record<string, { label: string; cls: string }> = {
   unknown: { label: '未知', cls: 'badge-gray' },
 };
 
-export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const groupId = Number(id);
+export default function GroupDetailPage({ params }: { params: { id: string } }) {
+  const groupId = Number(params.id);
   const queryClient = useQueryClient();
   const [refreshingIds, setRefreshingIds] = useState<Set<number>>(new Set());
 
