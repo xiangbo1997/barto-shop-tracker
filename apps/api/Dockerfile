@@ -20,7 +20,10 @@ COPY packages/shared/package.json packages/shared/
 RUN bun install --frozen-lockfile
 
 # 2) 装 Playwright Chromium + 系统依赖（独立缓存层，源码变更不重下）
+# 关键：从 apps/api 目录执行，确保解析到 api 依赖树实际加载的 playwright 版本，
+# 否则根目录解析到的版本与运行时不一致（实测根=1223，apps/api=1217，错配致浏览器找不到）。
 RUN apt-get update \
+  && cd /app/apps/api \
   && bunx playwright install-deps chromium \
   && bunx playwright install chromium \
   && rm -rf /var/lib/apt/lists/*
