@@ -13,7 +13,11 @@ export interface ScrapeOutcome {
   fetchError: string | null;
   attempts: Array<{ tier: 0 | 1 | 2; hit: boolean; error: string | null; elapsedMs?: number }>;
   finalUrl: string;
+  /** 单品抓取全部 miss 且 URL 像店铺列表页——worker 可据此尝试 LLM 展开。 */
+  isShopListing?: boolean;
 }
+
+export { looksLikeShopListing };
 
 /**
  * 启发式判断 URL 是否为「店铺/列表页」（含多个商品），而非单商品页。
@@ -63,9 +67,11 @@ export async function scrape(url: string, options: ScrapeOptions = {}): Promise<
   if (!t1.hit && !t2.hit && (looksLikeShopListing(url) || looksLikeShopListing(finalUrl))) {
     return {
       data: null,
-      fetchError: '这看起来是店铺/列表页（含多个商品），barto 仅支持单个商品链接。请打开具体商品后复制其购买链接再导入。',
+      // 提示作为 LLM 展开失败时的回退文案；worker 会先尝试展开。
+      fetchError: '这看起来是店铺/列表页（含多个商品）。如已配置 LLM，可自动展开为多个商品；否则请改用单个商品链接。',
       attempts,
       finalUrl,
+      isShopListing: true,
     };
   }
 

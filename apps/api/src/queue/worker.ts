@@ -106,6 +106,33 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
 
     const now = new Date();
 
+    // 店铺/列表页：尝试 LLM 展开为多商品 + 自动建组。成功则结束本任务。
+    if (!outcome.data && outcome.isShopListing) {
+      const { expandShopListing } = await import('../crawler/expand.ts');
+      const result = await expandShopListing(payload.url, payload.productId);
+      if (result.expanded > 0) {
+        jobEvents.emit({
+          type: 'job.completed',
+          productId: payload.productId,
+          jobId,
+          url: payload.url,
+          hit: true,
+          at: Date.now(),
+        });
+        await writeCrawlRun({
+          host,
+          productId: payload.productId,
+          triggeredBy: payload.triggeredBy,
+          status: 'success',
+          startedAt,
+          finishedAt: new Date(),
+          details: { expanded: result.expanded, groupId: result.groupId },
+        });
+        return;
+      }
+      // 展开失败（无 LLM 等）：落到下面的失败分支，写引导提示。
+    }
+
     if (outcome.data) {
       const tier = outcome.data.tierUsed as FetchTier;
       const expiresAt = computeExpiresAt(tier, now);
