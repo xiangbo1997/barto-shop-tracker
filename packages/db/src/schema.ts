@@ -175,3 +175,13 @@ export type SiteSession = typeof siteSessions.$inferSelect;
 export type NewSiteSession = typeof siteSessions.$inferInsert;
 export type CrawlRun = typeof crawlRuns.$inferSelect;
 export type NewCrawlRun = typeof crawlRuns.$inferInsert;
+
+// 运行时应用配置（key-value）。让 LLM/抓取/定时等配置可在 UI 改，无需重启容器。
+// 简单 KV 而非每项一列：加配置项无需改 schema。
+export const appSettings = pgTable('app_settings', {
+  key: varchar('key', { length: 64 }).primaryKey(),
+  value: text('value'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;

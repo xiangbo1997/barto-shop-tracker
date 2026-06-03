@@ -1,5 +1,5 @@
 import { FETCH_TIER, type ScrapeResult } from '@barto/shared';
-import { env } from '../lib/env.ts';
+import { resolveScrape } from '../lib/settings.ts';
 import { isHit, parseHtmlToResult } from './tier0-static.ts';
 
 /**
@@ -28,22 +28,23 @@ export async function scrapeTier2(
   url: string,
   options: { timeoutMs?: number } = {}
 ): Promise<Tier2Result> {
-  if (!env.FEATURE_TIER2_SCRAPE) {
+  const scrape = await resolveScrape();
+  if (!scrape.enabled) {
     return { hit: false, data: null, fetchError: 'tier2 disabled (FEATURE_TIER2_SCRAPE=false)' };
   }
-  if (!env.SCRAPE_API_KEY) {
+  if (!scrape.apiKey) {
     return { hit: false, data: null, fetchError: 'tier2 unavailable: SCRAPE_API_KEY not set' };
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? env.SCRAPE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? scrape.timeoutMs);
 
   try {
-    const response = await fetch(`${env.SCRAPE_API_URL}/scrape`, {
+    const response = await fetch(`${scrape.apiUrl}/scrape`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': env.SCRAPE_API_KEY,
+        'X-API-Key': scrape.apiKey,
       },
       // 抓取商品页：要完整 HTML 以便复用解析器；过盾页给足等待时间。
       body: JSON.stringify({ url, format: 'html', use_proxy: false, scroll: true, delay: 6 }),

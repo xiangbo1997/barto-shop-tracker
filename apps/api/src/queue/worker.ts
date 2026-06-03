@@ -16,6 +16,7 @@ import {
 import { scrape } from '../crawler/index.ts';
 import { getHostFromUrl } from '../crawler/normalize.ts';
 import { env } from '../lib/env.ts';
+import { resolveScraper } from '../lib/settings.ts';
 import { jobEvents } from './events.ts';
 import { getBoss, QUEUE_NAMES, type RefreshProductPayload } from './jobs.ts';
 
@@ -97,9 +98,10 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
   });
 
   try {
+    const scraperCfg = await resolveScraper();
     const outcome = await scrape(payload.url, {
-      defaultTier: env.SCRAPER_DEFAULT_TIER as 0 | 1 | 2,
-      timeoutMs: env.SCRAPER_TIMEOUT_MS,
+      defaultTier: scraperCfg.defaultTier,
+      timeoutMs: scraperCfg.timeoutMs,
     });
 
     const now = new Date();

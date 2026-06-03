@@ -20,6 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <a href="/jobs">任务</a>
             <a href="/health">健康</a>
             <a href="/sessions">会话</a>
+            <a href="/settings">设置</a>
             <LogoutButton />
           </nav>
           <main className="container">{children}</main>

@@ -13,3 +13,4 @@ export { schema };
 export * from './schema.ts';
 export * from './health.ts';
 export * from './groups.ts';
+export * from './settings.ts';

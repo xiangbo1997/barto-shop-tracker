@@ -103,6 +103,15 @@ export const apiClient = {
   setProductGroup: (productId: number, groupId: number | null) =>
     api<{ data: Product }>(`/products/${productId}`, { method: 'PATCH', body: JSON.stringify({ groupId }) }),
 
+  // ── 运行时配置 ──
+  getSettings: () => api<{ data: Record<string, SettingItem> }>('/settings'),
+  saveSettings: (values: Record<string, string>) =>
+    api<{ ok: boolean; saved?: number; errors?: string[] }>('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(values),
+    }),
+  testLlm: () => api<{ ok: boolean; reply?: string; error?: string }>('/settings/test-llm', { method: 'POST', body: '{}' }),
+
   // ── 价格历史 / 监控 ──
   priceHistory: (productId: number) => api<{ data: PricePoint[]; count: number }>(`/products/${productId}/history`),
   listAdapters: () => api<{ data: AdapterHealth[]; count: number }>('/monitor/adapters'),
@@ -158,6 +167,13 @@ export interface SessionUpsert {
   note?: string | null;
   expiresAt?: string | null;
   isActive?: boolean;
+}
+
+export interface SettingItem {
+  value: string;
+  sensitive: boolean;
+  hasValue: boolean;
+  masked?: string;
 }
 
 export interface GroupStats {

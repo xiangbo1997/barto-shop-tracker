@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import type { StockStatus } from '@barto/shared';
-import { env, getLlmCredentials } from '../lib/env.ts';
+import { resolveLlm, resolveScrape } from '../lib/settings.ts';
 import { parsePrice, parseStockStatus } from './normalize.ts';
 
 /**
@@ -26,13 +26,14 @@ interface LlmProductRaw {
 
 /** 调反爬平台拿列表页 Markdown（正文清洗，省 token）。 */
 async function fetchListingMarkdown(url: string): Promise<string | null> {
-  if (!env.SCRAPE_API_KEY) return null;
+  const scrape = await resolveScrape();
+  if (!scrape.apiKey) return null;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), env.SCRAPE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), scrape.timeoutMs);
   try {
-    const res = await fetch(`${env.SCRAPE_API_URL}/scrape`, {
+    const res = await fetch(`${scrape.apiUrl}/scrape`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': env.SCRAPE_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': scrape.apiKey },
       body: JSON.stringify({ url, format: 'markdown', scroll: true, delay: 6 }),
       signal: controller.signal,
     });
@@ -58,23 +59,18 @@ const SYSTEM_PROMPT = `你是电商页面解析器。用户给你一个店铺/�
  * 从列表页 Markdown 用 LLM 提取多商品。失败返回空数组。
  */
 export async function expandListingWithLlm(url: string): Promise<ExpandedProduct[]> {
-  if (!env.FEATURE_LLM_ENABLED) return [];
-  let creds;
-  try {
-    creds = getLlmCredentials();
-  } catch {
-    return [];
-  }
+  const llm = await resolveLlm();
+  if (!llm.enabled || !llm.baseUrl || !llm.apiKey) return [];
 
   const markdown = await fetchListingMarkdown(url);
   if (!markdown || markdown.length < 30) return [];
 
-  const client = new OpenAI({ baseURL: creds.baseUrl, apiKey: creds.apiKey });
+  const client = new OpenAI({ baseURL: llm.baseUrl, apiKey: llm.apiKey });
 
   let content: string;
   try {
     const completion = await client.chat.completions.create({
-      model: creds.model,
+      model: llm.model,
       temperature: 0,
       response_format: { type: 'json_object' },
       messages: [
