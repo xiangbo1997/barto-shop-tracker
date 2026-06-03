@@ -32,10 +32,21 @@ export async function expandShopListing(shopUrl: string, parentProductId: number
   const host = getHostFromUrl(shopUrl);
   const now = new Date();
 
+  // 去掉易变 query（如 u_atoken/u_asig 等访问令牌），得到稳定的店铺基础 URL。
+  // 否则每次展开 query 不同，子商品 url（基于店铺URL拼）每次都变，去重失效→重复插入。
+  let baseUrl = shopUrl;
+  try {
+    const u = new URL(shopUrl);
+    baseUrl = `${u.origin}${u.pathname}`;
+  } catch {
+    /* 保持原值 */
+  }
+
   for (const it of items) {
     const tier = FETCH_TIER.LLM;
     const expiresAt = computeExpiresAt(tier, now);
-    const childUrl = it.buyUrl ?? `${shopUrl}#${encodeURIComponent(it.title.slice(0, 64))}`;
+    // 子商品 url：优先购买链接；否则用稳定的 baseUrl#标题（保证重复展开幂等去重）。
+    const childUrl = it.buyUrl ?? `${baseUrl}#${encodeURIComponent(it.title.slice(0, 64))}`;
     const hasPrice = it.price != null;
     const category = classifyTitle(it.title);
 
@@ -75,17 +86,8 @@ export async function expandShopListing(shopUrl: string, parentProductId: number
       });
   }
 
-  // 父店铺页：标记已展开（用干净文案，不复用可能已被改过的旧 title，避免套娃）。
-  await db
-    .update(products)
-    .set({
-      title: `📦 ${host}（店铺页 · 已展开 ${items.length} 个商品）`,
-      fetchError: `已展开 ${items.length} 个商品（见未归组列表，可自行归组比价）`,
-      stockStatus: 'unknown',
-      groupId: null,
-      updatedAt: now,
-    })
-    .where(eq(products.id, parentProductId));
+  // 父店铺页是入口占位，展开后无价值——直接删除，避免列表里留空壳。
+  await db.delete(products).where(eq(products.id, parentProductId));
 
   return { expanded: items.length, error: null };
 }
