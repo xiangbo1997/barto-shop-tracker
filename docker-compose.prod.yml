@@ -63,6 +63,10 @@ services:
       # web 的 /api/* rewrite 在容器内指向 api 服务名。
       API_INTERNAL_URL: http://api:3001
       PORT: 3000
+      # 应用内鉴权（替代 Caddy basic_auth）：登录凭据 + session 签名密钥。
+      APP_AUTH_USER: ${APP_AUTH_USER:-barto}
+      APP_AUTH_PASSWORD: ${APP_AUTH_PASSWORD}
+      APP_AUTH_SECRET: ${APP_AUTH_SECRET}
     # 宿主 3000 已被其他 next-server 占用，映射到 3005。
     ports:
       - "127.0.0.1:3005:3000"

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Providers } from './providers';
+import { LogoutButton } from './logout-button';
 import './globals.css';
 
 export const metadata = {
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <a href="/import">导入</a>
             <a href="/jobs">任务</a>
             <a href="/sessions">会话</a>
+            <LogoutButton />
           </nav>
           <main className="container">{children}</main>
         </Providers>
