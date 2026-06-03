@@ -2,8 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@barto/shared'],
-  // Docker 部署需要 standalone 产物（自带最小 node_modules，镜像更小）。
-  output: 'standalone',
+  // 注：曾尝试 output:'standalone'，但 Bun workspace 的 symlink node_modules
+  // 导致 standalone 依赖 tracing 失效（next 模块物化不全）。改用常规 next start
+  // + 完整 node_modules，可靠优先。
   experimental: {
     typedRoutes: false,
   },
