@@ -20,9 +20,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json bun.lock tsconfig.base.json ./
 COPY packages ./packages
 COPY apps/web ./apps/web
-WORKDIR /app/apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN bun run build
+# 从仓库根执行，让 bun 正确解析 workspace 的 next bin（避免 apps/web 下 .bin 缺失）。
+RUN bun run --cwd apps/web build
 
 # ── 运行层：仅拷 standalone 产物 ──
 FROM oven/bun:1.3.3-debian AS runtime
