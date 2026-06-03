@@ -49,6 +49,8 @@ services:
       - "127.0.0.1:3001:3001"
     networks:
       - barto
+      # 接入 cli-proxy-api 所在网络，让 LLM 走内网直连 cli-proxy-api:8317（绕开 Cloudflare WAF）
+      - cliproxyapi
 
   web:
     build:
@@ -80,3 +82,7 @@ volumes:
 networks:
   barto:
     name: barto_net
+  # 外部网络：cli-proxy-api（LLM 中转）所在的 docker 网络，api 容器接入以走内网直连
+  cliproxyapi:
+    external: true
+    name: cliproxyapi_default
