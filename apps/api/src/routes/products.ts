@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { db, products } from '@barto/db';
+import { db, products, priceHistory, recomputeGroupLowestPrice } from '@barto/db';
 import { and, asc, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -98,12 +98,31 @@ productsRoute.get('/:id', async (c) => {
   return c.json({ data: row[0] });
 });
 
+/** GET /products/:id/history —— 价格历史时序（供趋势图，按时间升序）。 */
+productsRoute.get('/:id/history', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isFinite(id)) return c.json({ error: 'invalid id' }, 400);
+  const rows = await db
+    .select({
+      price: priceHistory.price,
+      currency: priceHistory.currency,
+      stockStatus: priceHistory.stockStatus,
+      fetchedAt: priceHistory.fetchedAt,
+    })
+    .from(priceHistory)
+    .where(eq(priceHistory.productId, id))
+    .orderBy(asc(priceHistory.fetchedAt))
+    .limit(500);
+  return c.json({ data: rows, count: rows.length });
+});
+
 const updateSchema = z.object({
   title: z.string().nullable().optional(),
   userNote: z.string().nullable().optional(),
   currentPrice: z.string().nullable().optional(),
   currency: z.string().nullable().optional(),
   stockStatus: z.enum(['in_stock', 'out_of_stock', 'unknown']).optional(),
+  groupId: z.number().int().positive().nullable().optional(),
 });
 
 productsRoute.patch('/:id', async (c) => {
@@ -113,12 +132,28 @@ productsRoute.patch('/:id', async (c) => {
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
+  // 记录改动前的旧组，便于改 groupId 后同时重算新旧两组。
+  const before = await db
+    .select({ groupId: products.groupId })
+    .from(products)
+    .where(eq(products.id, id))
+    .limit(1);
+  const oldGroupId = before[0]?.groupId ?? null;
+
   const updated = await db
     .update(products)
     .set({ ...parsed.data, manuallyEdited: true, updatedAt: new Date() })
     .where(eq(products.id, id))
     .returning();
   if (!updated[0]) return c.json({ error: 'not found' }, 404);
+
+  // 归属组或价格/库存变化都可能影响组最低价：重算受影响的组。
+  const newGroupId = updated[0].groupId ?? null;
+  const affected = new Set<number>();
+  if (oldGroupId != null) affected.add(oldGroupId);
+  if (newGroupId != null) affected.add(newGroupId);
+  for (const gid of affected) await recomputeGroupLowestPrice(gid);
+
   return c.json({ data: updated[0] });
 });
 

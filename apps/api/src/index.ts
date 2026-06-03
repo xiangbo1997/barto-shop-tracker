@@ -6,6 +6,8 @@ import { ingestRoute } from './routes/ingest.ts';
 import { refreshRoute } from './routes/refresh.ts';
 import { jobsRoute } from './routes/jobs.ts';
 import { sessionsRoute } from './routes/sessions.ts';
+import { groupsRoute } from './routes/groups.ts';
+import { monitorRoute } from './routes/monitor.ts';
 import { startWorker } from './queue/worker.ts';
 import { startScheduler } from './queue/scheduler.ts';
 import { shutdownBoss } from './queue/jobs.ts';
@@ -32,6 +34,8 @@ app.route('/ingest', ingestRoute);
 app.route('/refresh', refreshRoute);
 app.route('/jobs', jobsRoute);
 app.route('/sessions', sessionsRoute);
+app.route('/groups', groupsRoute);
+app.route('/monitor', monitorRoute);
 
 await startWorker();
 await startScheduler();

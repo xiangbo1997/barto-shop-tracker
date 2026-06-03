@@ -1,4 +1,11 @@
-import { db, products, priceHistory, crawlRuns, recordSourceHealth } from '@barto/db';
+import {
+  db,
+  products,
+  priceHistory,
+  crawlRuns,
+  recordSourceHealth,
+  recomputeGroupLowestPrice,
+} from '@barto/db';
 import { desc, eq } from 'drizzle-orm';
 import {
   computeExpiresAt,
@@ -103,7 +110,7 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
       // 抓取成功瞬间一定是 fresh；前端会用 verifiedAt+expiresAt 实时重算后续状态。
       const freshnessStatus = computeFreshness(now, expiresAt, false, now);
 
-      await db
+      const updated = await db
         .update(products)
         .set({
           title: outcome.data.title,
@@ -122,7 +129,14 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
           freshnessStatus,
           updatedAt: now,
         })
-        .where(eq(products.id, payload.productId));
+        .where(eq(products.id, payload.productId))
+        .returning({ groupId: products.groupId });
+
+      // 若属于某商品组，重算组的最低可用价（比价核心）。
+      const groupId = updated[0]?.groupId ?? null;
+      if (groupId != null) {
+        await recomputeGroupLowestPrice(groupId);
+      }
 
       let historyWritten = false;
       if (outcome.data.price !== null) {
@@ -159,7 +173,11 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
       // 但按当前时刻重算 freshness——失败后 freshnessStatus 不再是 fresh，
       // 前端据此提示"数据可能已过期 / 上次抓取失败"。
       const existing = await db
-        .select({ verifiedAt: products.verifiedAt, expiresAt: products.expiresAt })
+        .select({
+          verifiedAt: products.verifiedAt,
+          expiresAt: products.expiresAt,
+          groupId: products.groupId,
+        })
         .from(products)
         .where(eq(products.id, payload.productId))
         .limit(1);
@@ -177,6 +195,11 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
           updatedAt: now,
         })
         .where(eq(products.id, payload.productId));
+
+      // 失败可能使该 product 不再可用（freshness 降级），需重算组最低价。
+      if (e?.groupId != null) {
+        await recomputeGroupLowestPrice(e.groupId);
+      }
 
       await recordSourceHealth({ host, ok: false, error: outcome.fetchError });
       await writeCrawlRun({

@@ -21,7 +21,8 @@ export const productGroups = pgTable('product_groups', {
   canonicalTitle: text('canonical_title').notNull(),
   lowestPrice: numeric('lowest_price', { precision: 12, scale: 2 }),
   lowestPriceCurrency: varchar('lowest_price_currency', { length: 8 }),
-  lowestPriceProductId: bigserial('lowest_price_product_id', { mode: 'number' }),
+  // 指向组内当前最低可用价的 product.id（可空：组内可能暂无可用报价）。
+  lowestPriceProductId: integer('lowest_price_product_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

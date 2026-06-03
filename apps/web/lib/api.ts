@@ -87,6 +87,31 @@ export const apiClient = {
     }),
   recentJobs: () => api<{ data: JobEvent[] }>('/jobs/recent'),
 
+  // ── 商品组 / 比价 ──
+  listGroups: () => api<{ data: ProductGroup[]; count: number }>('/groups'),
+  getGroup: (id: number) => api<{ data: GroupDetail }>(`/groups/${id}`),
+  createGroup: (input: { title?: string; fromProductId?: number }) =>
+    api<{ data: ProductGroup }>('/groups', { method: 'POST', body: JSON.stringify(input) }),
+  renameGroup: (id: number, title: string) =>
+    api<{ data: ProductGroup }>(`/groups/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
+  deleteGroup: (id: number) => api<{ deleted: number }>(`/groups/${id}`, { method: 'DELETE' }),
+  addGroupMembers: (id: number, productIds: number[]) =>
+    api<{ added: number }>(`/groups/${id}/members`, { method: 'POST', body: JSON.stringify({ productIds }) }),
+  removeGroupMember: (id: number, productId: number) =>
+    api<{ removed: boolean }>(`/groups/${id}/members/${productId}`, { method: 'DELETE' }),
+  suggestGroups: () => api<{ data: GroupSuggestion[] }>('/groups/suggest'),
+  setProductGroup: (productId: number, groupId: number | null) =>
+    api<{ data: Product }>(`/products/${productId}`, { method: 'PATCH', body: JSON.stringify({ groupId }) }),
+
+  // ── 价格历史 / 监控 ──
+  priceHistory: (productId: number) => api<{ data: PricePoint[]; count: number }>(`/products/${productId}/history`),
+  listAdapters: () => api<{ data: AdapterHealth[]; count: number }>('/monitor/adapters'),
+  crawlRuns: (params: { host?: string; status?: string } = {}) => {
+    const s = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) if (v) s.set(k, String(v));
+    return api<{ data: CrawlRun[]; count: number }>(`/monitor/crawl-runs?${s.toString()}`);
+  },
+
   listSessions: () => api<{ data: Session[] }>('/sessions'),
   createSession: (input: SessionUpsert) =>
     api<{ data: Session; parseWarnings: string[] }>('/sessions', {
@@ -133,4 +158,62 @@ export interface SessionUpsert {
   note?: string | null;
   expiresAt?: string | null;
   isActive?: boolean;
+}
+
+export interface GroupStats {
+  total: number;
+  inStock: number;
+  outOfStock: number;
+}
+
+export interface ProductGroup {
+  id: number;
+  canonicalTitle: string;
+  lowestPrice: string | null;
+  lowestPriceCurrency: string | null;
+  lowestPriceProductId: number | null;
+  createdAt: string;
+  updatedAt: string;
+  stats: GroupStats;
+}
+
+export interface GroupDetail extends ProductGroup {
+  members: Product[];
+}
+
+export interface GroupSuggestion {
+  suggestedTitle: string;
+  members: Array<{ id: number; title: string | null; sourceSite: string }>;
+}
+
+export interface PricePoint {
+  price: string | null;
+  currency: string | null;
+  stockStatus: StockStatus;
+  fetchedAt: string;
+}
+
+export interface AdapterHealth {
+  host: string;
+  healthStatus: string;
+  successCount: number;
+  failureCount: number;
+  consecutiveFailures: number;
+  successfulTier: number;
+  lastError: string | null;
+  lastSuccessAt: string | null;
+  lastUsedAt: string | null;
+}
+
+export interface CrawlRun {
+  id: number;
+  host: string | null;
+  productId: number | null;
+  triggeredBy: string;
+  status: string;
+  tierUsed: number | null;
+  elapsedMs: number | null;
+  error: string | null;
+  startedAt: string;
+  finishedAt: string | null;
 }

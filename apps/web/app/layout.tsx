@@ -15,9 +15,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Providers>
           <nav className="topbar">
             <a href="/" className="brand">barto</a>
-            <a href="/products">商品</a>
+            <a href="/products">比价</a>
             <a href="/import">导入</a>
             <a href="/jobs">任务</a>
+            <a href="/health">健康</a>
             <a href="/sessions">会话</a>
             <LogoutButton />
           </nav>

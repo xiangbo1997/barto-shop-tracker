@@ -12,3 +12,4 @@ export const db = drizzle(queryClient, { schema });
 export { schema };
 export * from './schema.ts';
 export * from './health.ts';
+export * from './groups.ts';

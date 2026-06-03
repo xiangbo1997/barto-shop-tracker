@@ -1,5 +1,16 @@
 import { computeFreshness, FRESHNESS_STATUS, type FreshnessStatus } from '@barto/shared';
 
+/** 来源站点 favicon（Google s2 服务）。任意海淘域名通用，替代 PriceAI 的固定平台 icon。 */
+export function faviconUrl(sourceSite: string): string {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(sourceSite)}&sz=64`;
+}
+
+/** 域名首字母（favicon 加载失败时的兜底标识）。 */
+export function siteInitial(sourceSite: string): string {
+  const cleaned = sourceSite.replace(/^www\./, '');
+  return (cleaned[0] ?? '?').toUpperCase();
+}
+
 /** 金额格式化：null/非数返回占位符。 */
 export function fmtMoney(price: string | null, currency: string | null): string {
   if (!price) return '—';
