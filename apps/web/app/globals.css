@@ -163,17 +163,24 @@ tr.out-of-stock:hover td { background: #f9f1f0; }
 /* 组卡片的最低价用更大字号 */
 .group-card .price.available { font-size: 1.25rem; }
 
-/* ── 组卡片 ── */
-.group-card {
-  display: flex; align-items: center; gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.15s;
+/* ── 组标题 / 状态内联 chip / 操作按钮（比价表格内）── */
+.group-title { font-size: 0.95rem; font-weight: 700; color: var(--ink); line-height: 1.35; }
+.status-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.status-chip { padding: 2px 9px; border-radius: 9999px; font-size: 11px; font-weight: 700; }
+.status-chip.in { background: var(--green-soft); color: var(--green); }
+.status-chip.out { background: var(--red-soft); color: var(--red); }
+/* 描边 pill 操作按钮 */
+.btn-outline {
+  display: inline-flex; align-items: center; height: 32px; padding: 0 16px;
+  border: 1px solid var(--border-strong); border-radius: 9999px;
+  font-size: 13px; font-weight: 700; color: var(--fg); background: transparent;
+  cursor: pointer; transition: all 0.15s;
 }
-.group-card:hover { background: var(--surface-hover); }
-.group-card:last-child { border-bottom: none; }
-.group-title { font-size: 1rem; font-weight: 700; color: var(--ink); line-height: 1.35; }
-.group-counts { font-size: 12px; color: var(--muted); }
+.btn-outline:hover { background: var(--ink); color: #fff; border-color: var(--ink); text-decoration: none; }
+/* 未归组区分隔标题 */
+.section-divider { display: flex; align-items: center; gap: 8px; margin: 32px 0 12px; }
+.section-divider .label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.section-divider .count { font-size: 12px; color: var(--muted); }
 
 /* ── 工具栏 / 分段控件 ── */
 .toolbar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
