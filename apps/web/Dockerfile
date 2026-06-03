@@ -27,7 +27,7 @@ ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 # Next standalone 把 server.js 放在 apps/web 路径下（monorepo 结构保留）
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder /app/apps/web/public ./apps/web/public
+# 本项目无 public/ 目录，故不拷贝（Next standalone 不强制需要）
 WORKDIR /app/apps/web
 # standalone server.js 用 node 运行（Next 产物面向 node）；绑 0.0.0.0 由 compose 端口映射限制到 127.0.0.1
 ENV PORT=3000 HOSTNAME=0.0.0.0
