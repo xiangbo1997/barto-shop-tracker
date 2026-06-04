@@ -150,7 +150,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 //     这类账号商品主体是平台，不能因含"接码/账号/普号"字样被误归 SMS/账号。
 //  4) 真正的接码商品（如「单次接码」）标题不含平台词，仍由 SMS 命中。
 const CATEGORY_RULES: Array<{ category: Category; keywords: string[] }> = [
-  { category: CATEGORY.VIRTUAL_CARD, keywords: ['虚拟卡', '虚拟信用卡', 'visa', 'mastercard', '万事达', '事达卡', '购物卡', '一次性卡', 'vcc', '礼品卡', 'gift card'] },
+  // 虚拟卡强信号（明确是卡）。"礼品卡/购物卡/gift card" 是弱信号，单独在 classifyTitle 处理（见下）。
+  { category: CATEGORY.VIRTUAL_CARD, keywords: ['虚拟卡', '虚拟信用卡', 'visa', 'mastercard', '万事达', '事达卡', '一次性卡', 'vcc'] },
   { category: CATEGORY.APPLE_ID, keywords: ['apple id', 'appleid', 'apple 账号', 'apple账号', 'icloud', 'itunes', '苹果id', '苹果账号', 'app store'] },
   { category: CATEGORY.API_CREDIT, keywords: ['api', 'cdk', '额度', '中转', '余额', 'codex api', 'key 充值'] },
   { category: CATEGORY.CLAUDE, keywords: ['claude', 'sonnet', 'opus'] },
@@ -168,13 +169,18 @@ const CATEGORY_RULES: Array<{ category: Category; keywords: string[] }> = [
 // 用于消歧——「Codex普号…手机接码解锁」是账号（归平台），「Codex接码 单次接码」是接码服务（归 SMS）。
 const ACCOUNT_MARKERS = ['普号', '成品', '账密', '直登', '会员号', '账户', '账号'];
 const SMS_MARKERS = ['接码', '验证码', '短信', 'sms', '收码', '手机号码'];
+// AI 平台标志词：用于消歧"礼品卡/购物卡"——「Claude 礼品卡」归 Claude 而非虚拟卡。
+const PLATFORM_MARKERS = ['claude', 'sonnet', 'opus', 'chatgpt', 'gpt', 'openai', 'codex', 'sora', 'gemini', 'bard', 'grok'];
+// 礼品卡弱信号：含平台词时归平台，否则才归虚拟卡。
+const GIFTCARD_SOFT = ['礼品卡', '购物卡', 'gift card'];
 
 /**
  * 按标题关键词归类。无标题或无命中归 other。
  * 纯函数，供 worker（写入）与前端（展示标签）共用。
  *
- * 消歧规则：标题含接码标志词、且**不含**账号标志词时，优先判为接码服务（SMS）。
- * 这样「XX接码 单次接码」归 SMS，而「Codex普号…接码登录」（账号）走后续平台规则归 ChatGPT。
+ * 消歧规则：
+ *  1) 含接码词、且不含账号词 → 接码服务（SMS）。「XX接码」归 SMS，「Codex普号…接码登录」走平台。
+ *  2) 礼品卡/购物卡弱信号：含 AI 平台词时归平台（「Claude 礼品卡」→ Claude），否则归虚拟卡。
  */
 export function classifyTitle(title: string | null | undefined): Category {
   if (!title) return CATEGORY.OTHER;
@@ -183,6 +189,11 @@ export function classifyTitle(title: string | null | undefined): Category {
   const hasSms = SMS_MARKERS.some((k) => lower.includes(k));
   const hasAccount = ACCOUNT_MARKERS.some((k) => lower.includes(k));
   if (hasSms && !hasAccount) return CATEGORY.SMS;
+
+  // 礼品卡/购物卡：不含平台词时才归虚拟卡（含平台词则交给下面的平台规则）。
+  const hasGiftcard = GIFTCARD_SOFT.some((k) => lower.includes(k));
+  const hasPlatform = PLATFORM_MARKERS.some((k) => lower.includes(k));
+  if (hasGiftcard && !hasPlatform) return CATEGORY.VIRTUAL_CARD;
 
   for (const rule of CATEGORY_RULES) {
     if (rule.keywords.some((k) => lower.includes(k))) return rule.category;

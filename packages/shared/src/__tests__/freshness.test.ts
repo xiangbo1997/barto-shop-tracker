@@ -99,4 +99,11 @@ describe('classifyTitle', () => {
     expect(classifyTitle('Codex普号|账密直登+RT|Codex已经过手机接码解锁|长效邮箱')).toBe(CATEGORY.CHATGPT));
   test('纯接码商品仍归 SMS', () =>
     expect(classifyTitle('自动发货 Codex接码（美区）单次接码')).toBe(CATEGORY.SMS));
+  // 礼品卡弱信号消歧：含平台词归平台，否则归虚拟卡
+  test('Claude 礼品卡→Claude（非虚拟卡）', () =>
+    expect(classifyTitle('Claude 官方礼品卡 自动发货！pro一月gift')).toBe(CATEGORY.CLAUDE));
+  test('纯礼品卡→虚拟卡', () =>
+    expect(classifyTitle('美区 礼品卡 $50 自动发货')).toBe(CATEGORY.VIRTUAL_CARD));
+  test('Visa 仍归虚拟卡', () =>
+    expect(classifyTitle('美区 Visa 虚拟卡')).toBe(CATEGORY.VIRTUAL_CARD));
 });

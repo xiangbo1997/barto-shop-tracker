@@ -156,6 +156,7 @@ const updateSchema = z.object({
   currentPrice: z.string().nullable().optional(),
   currency: z.string().nullable().optional(),
   stockStatus: z.enum(['in_stock', 'out_of_stock', 'unknown']).optional(),
+  category: z.string().max(32).nullable().optional(),
   groupId: z.number().int().positive().nullable().optional(),
 });
 

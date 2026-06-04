@@ -33,6 +33,7 @@
   --accent: var(--ink);
   --accent-soft: var(--surface-selected);
   --radius: 8px;
+  --topbar-h: 56px;
   /* 字体 */
   --font-serif: 'Noto Serif SC', 'Songti SC', Georgia, serif;
   --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -51,10 +52,11 @@ a:hover { text-decoration: underline; }
 /* ── 顶栏 ── */
 .topbar {
   display: flex; align-items: center; gap: 24px;
-  padding: 14px 32px;
+  height: var(--topbar-h);
+  padding: 0 32px;
   background: var(--white-tinted);
   border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 10;
+  position: sticky; top: 0; z-index: 30;
 }
 .topbar .brand {
   font-family: var(--font-serif);
@@ -180,9 +182,20 @@ tr.out-of-stock:hover td { background: #f9f1f0; }
 .gcard-channel .val .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gcard-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 4px; }
 
-/* ── 分类 tab 栏 ── */
-.cat-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 8px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-.cat-tab { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 16px; border-radius: 9999px; font-size: 14px; font-weight: 600; color: var(--muted); background: transparent; white-space: nowrap; cursor: pointer; border: none; }
+/* ── 吸顶区：滚动浏览列表时，分类 tab + 工具栏停在顶栏下方 ── */
+.sticky-bar {
+  position: sticky; top: var(--topbar-h); z-index: 20;
+  background: var(--bg);
+  /* 抵消 .container 的左右 padding，让吸顶背景铺满，避免露出底层内容 */
+  margin: 0 -32px; padding: 8px 32px 0;
+  box-shadow: 0 1px 0 var(--border);
+}
+.sticky-bar .cat-tabs { margin-bottom: 12px; }
+.sticky-bar .toolbar { margin-bottom: 12px; }
+
+/* ── 分类 tab 栏（自动换行，不用横向滚动条）── */
+.cat-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 0 14px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.cat-tab { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; border-radius: 9999px; font-size: 14px; font-weight: 600; color: var(--muted); background: transparent; white-space: nowrap; cursor: pointer; border: none; }
 .cat-tab svg, .cat-tab img { flex-shrink: 0; }
 .cat-tab:hover { background: var(--surface); color: var(--fg); }
 .cat-tab.active { background: var(--surface-selected); color: var(--ink); }
@@ -267,6 +280,16 @@ tr.out-of-stock:hover td { background: #f9f1f0; }
 .filter-field select, .filter-field input { height: 46px; width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 9999px; padding: 0 16px; }
 .filter-reset { align-self: end; height: 46px; background: #fff; border: 1px solid var(--border); border-radius: 9999px; }
 .filter-reset:hover { background: var(--surface-selected); }
+
+/* ── 内联分类下拉（可手动改分类，外观轻量近似标签）── */
+.cat-select {
+  height: 24px; padding: 0 6px; font-size: 11px; font-weight: 600;
+  color: var(--muted); background: var(--surface);
+  border: 1px solid transparent; border-radius: 6px; cursor: pointer;
+  max-width: 110px;
+}
+.cat-select:hover { background: var(--surface-selected); color: var(--ink); }
+.cat-select:focus { outline: none; border-color: var(--border-strong); box-shadow: none; }
 
 /* ── 收藏（★ 星标）── */
 .fav-btn { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }

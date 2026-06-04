@@ -145,6 +145,16 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
       // 抓取成功瞬间一定是 fresh；前端会用 verifiedAt+expiresAt 实时重算后续状态。
       const freshnessStatus = computeFreshness(now, expiresAt, false, now);
 
+      // 用户手动改过分类（manuallyEdited）时，保留其分类，不被自动归类覆盖。
+      const prev = await db
+        .select({ manuallyEdited: products.manuallyEdited, category: products.category })
+        .from(products)
+        .where(eq(products.id, payload.productId))
+        .limit(1);
+      const category = prev[0]?.manuallyEdited && prev[0].category
+        ? prev[0].category
+        : classifyTitle(outcome.data.title);
+
       const updated = await db
         .update(products)
         .set({
@@ -156,7 +166,7 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
           currency: outcome.data.currency,
           stockStatus: outcome.data.stockStatus,
           fetchTierUsed: outcome.data.tierUsed,
-          category: classifyTitle(outcome.data.title),
+          category,
           fetchError: null,
           lastFetchedAt: now,
           lastSuccessAt: now,

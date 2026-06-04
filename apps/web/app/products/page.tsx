@@ -136,6 +136,14 @@ function ProductsInner() {
       void queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
   });
+  const changeCat = useMutation({
+    mutationFn: async ({ id, category }: { id: number; category: string }) =>
+      apiClient.updateCategory(id, category),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
 
   const products: Product[] = data?.data ?? [];
   const summary = data?.summary;
@@ -176,6 +184,13 @@ function ProductsInner() {
         ) : null}
       </div>
 
+      <div className="row space" style={{ marginBottom: 6 }}>
+        <h1 style={{ margin: 0 }}>全平台 标准商品报价</h1>
+      </div>
+      <p className="muted" style={{ margin: '0 0 16px', fontSize: 13 }}>主价格优先取有货最低价，缺货会明显标注</p>
+
+      {/* 吸顶区：分类 tab + 工具栏，滚动浏览列表时停在顶栏下方 */}
+      <div className="sticky-bar">
       {/* 分类 tab 栏（带平台图标）+ 末尾「★ 收藏」页签 */}
       <div className="cat-tabs">
         <button className={`cat-tab ${!category && !favOnly ? 'active' : ''}`} onClick={() => setParam({ category: '', favorited: '' })}>
@@ -196,11 +211,6 @@ function ProductsInner() {
           收藏 <span className="cat-count">{favCount}</span>
         </button>
       </div>
-
-      <div className="row space" style={{ marginBottom: 6 }}>
-        <h1 style={{ margin: 0 }}>全平台 标准商品报价</h1>
-      </div>
-      <p className="muted" style={{ margin: '0 0 20px', fontSize: 13 }}>主价格优先取有货最低价，缺货会明显标注</p>
 
       {/* 工具栏（图标化，对齐 PriceAI）*/}
       <div className="toolbar">
@@ -238,6 +248,7 @@ function ProductsInner() {
         </button>
         <a className="button cta" href="/import"><Plus size={16} /> 导入 URL</a>
       </div>
+      </div>{/* /.sticky-bar */}
 
       {showFilter ? (
         <div className="filter-grid">
@@ -347,6 +358,7 @@ function ProductsInner() {
               onRefresh={() => refreshOne.mutate(p.id)}
               onDelete={() => { if (confirm('删除该商品？')) delOne.mutate(p.id); }}
               onToggleFav={() => toggleFav.mutate({ id: p.id, favorited: !p.favorited })}
+              onChangeCategory={(cat) => changeCat.mutate({ id: p.id, category: cat })}
             />
           ))}
         </div>
@@ -370,6 +382,7 @@ function ProductsInner() {
               onToggleSel={() => toggleSel(p.id)}
               onDelete={() => { if (confirm('删除该商品？')) delOne.mutate(p.id); }}
               onToggleFav={() => toggleFav.mutate({ id: p.id, favorited: !p.favorited })}
+              onChangeCategory={(cat) => changeCat.mutate({ id: p.id, category: cat })}
             />
           ))}</tbody>
         </table>
@@ -390,6 +403,23 @@ function Metric({ label, value, icon, tone }: { label: string; value: number; ic
 function catLabel(c: string | null): string {
   if (!c) return '其他';
   return CATEGORY_LABELS[c as keyof typeof CATEGORY_LABELS] ?? c;
+}
+
+/** 内联分类下拉：可手动改商品分类（改后标记 manuallyEdited，重抓不覆盖）。 */
+function CatSelect({ value, onChange }: { value: string | null; onChange: (cat: string) => void }) {
+  return (
+    <select
+      className="cat-select"
+      value={value ?? 'other'}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => onChange(e.target.value)}
+      title="点击修改分类"
+    >
+      {CAT_ORDER.map((c) => (
+        <option key={c} value={c}>{CATEGORY_LABELS[c as keyof typeof CATEGORY_LABELS] ?? c}</option>
+      ))}
+    </select>
+  );
 }
 
 function GroupRow({ group }: { group: ProductGroup }) {
@@ -462,7 +492,7 @@ function GroupCard({ group }: { group: ProductGroup }) {
   );
 }
 
-function ProductCard({ p, refreshing, onRefresh, onDelete, onToggleFav }: { p: Product; refreshing: boolean; onRefresh: () => void; onDelete: () => void; onToggleFav: () => void }) {
+function ProductCard({ p, refreshing, onRefresh, onDelete, onToggleFav, onChangeCategory }: { p: Product; refreshing: boolean; onRefresh: () => void; onDelete: () => void; onToggleFav: () => void; onChangeCategory: (cat: string) => void }) {
   const inStock = p.stockStatus === 'in_stock';
   const fresh = viewFreshness(p);
   const sl = STOCK_LABELS[p.stockStatus] ?? STOCK_LABELS.unknown!;
@@ -485,7 +515,8 @@ function ProductCard({ p, refreshing, onRefresh, onDelete, onToggleFav }: { p: P
         <div className={`gcard-price ${inStock && p.currentPrice ? '' : 'na'}`}>{fmtMoney(p.currentPrice, p.currency)}</div>
         <div className="gcard-status">
           <span className={`badge ${sl.cls}`}>{sl.label}</span>
-          <span className="muted" style={{ fontSize: 12 }}>· {catLabel(p.category)}</span>
+          <span className="muted" style={{ fontSize: 12 }}>·</span>
+          <CatSelect value={p.category} onChange={onChangeCategory} />
         </div>
       </div>
       {p.fetchError ? (
@@ -508,7 +539,7 @@ function ProductCard({ p, refreshing, onRefresh, onDelete, onToggleFav }: { p: P
   );
 }
 
-function ProductRow({ p, refreshing, onRefresh, selected, onToggleSel, onDelete, onToggleFav }: { p: Product; refreshing: boolean; onRefresh: () => void; selected: boolean; onToggleSel: () => void; onDelete: () => void; onToggleFav: () => void }) {
+function ProductRow({ p, refreshing, onRefresh, selected, onToggleSel, onDelete, onToggleFav, onChangeCategory }: { p: Product; refreshing: boolean; onRefresh: () => void; selected: boolean; onToggleSel: () => void; onDelete: () => void; onToggleFav: () => void; onChangeCategory: (cat: string) => void }) {
   const inStock = p.stockStatus === 'in_stock';
   const fresh = viewFreshness(p);
   const sl = STOCK_LABELS[p.stockStatus] ?? STOCK_LABELS.unknown!;
@@ -518,7 +549,12 @@ function ProductRow({ p, refreshing, onRefresh, selected, onToggleSel, onDelete,
       <td style={{ width: 56 }}><SiteIcon sourceSite={p.sourceSite} /></td>
       <td>
         <div className="group-title" style={{ fontWeight: 600 }}>{p.title ?? <span className="muted">(无标题)</span>}</div>
-        {p.fetchError ? <div style={{ fontSize: 11, color: 'var(--red)' }}>{p.fetchError}</div> : <div className="muted" style={{ fontSize: 11 }}>{catLabel(p.category)} · {p.sourceSite}</div>}
+        {p.fetchError ? <div style={{ fontSize: 11, color: 'var(--red)' }}>{p.fetchError}</div> : (
+          <div className="row" style={{ gap: 4, fontSize: 11 }}>
+            <CatSelect value={p.category} onChange={onChangeCategory} />
+            <span className="muted">· {p.sourceSite}</span>
+          </div>
+        )}
       </td>
       <td><span className={`price ${inStock && p.currentPrice ? 'available' : 'unavailable'}`} style={{ fontSize: 15 }}>{fmtMoney(p.currentPrice, p.currency)}</span></td>
       <td><span className={`badge ${sl.cls}`}>{sl.label}</span></td>

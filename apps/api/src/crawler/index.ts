@@ -21,13 +21,21 @@ export { looksLikeShopListing };
 
 /**
  * 启发式判断 URL 是否为「店铺/列表页」（含多个商品），而非单商品页。
- * barto 提取器只解析单商品页；店铺列表页应引导用户改用单品链接。
- * 常见发卡/电商平台店铺路径模式：/shop/、/store/、/seller/、/u/、分类页等。
+ * barto 提取器只解析单商品页；店铺列表页走 LLM 展开为多商品。
+ * 常见发卡/电商平台列表路径：/shop/、/store/、/category/、/products（复数）、/goods 等。
+ *
+ * 注意区分单复数：
+ *  - /products、/goods、/items（复数）= 列表页 → true
+ *  - /product/123、/item/456（单数 + id）= 单品页 → false（不命中）
  */
 function looksLikeShopListing(url: string): boolean {
   try {
     const path = new URL(url).pathname.toLowerCase();
-    return /\/(shop|store|seller|merchant|category|cat|list|index)(\/|$)/.test(path) || path === '/' || path === '';
+    return (
+      /\/(shop|store|seller|merchant|category|cat|list|index|products|goods|items|all)(\/|$)/.test(path) ||
+      path === '/' ||
+      path === ''
+    );
   } catch {
     return false;
   }

@@ -81,6 +81,11 @@ export const apiClient = {
       method: 'PATCH',
       body: JSON.stringify({ favorited }),
     }),
+  updateCategory: (id: number, category: string) =>
+    api<{ data: Product }>(`/products/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ category }),
+    }),
   deleteProduct: (id: number) => api<{ deleted: number }>(`/products/${id}`, { method: 'DELETE' }),
   deleteProducts: (ids: number[]) =>
     api<{ deleted: number }>('/products/delete-batch', { method: 'POST', body: JSON.stringify({ ids }) }),
