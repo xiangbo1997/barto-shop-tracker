@@ -67,7 +67,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const apiClient = {
-  listProducts: (params: { q?: string; stock?: string; source?: string; category?: string; sort?: ProductSort } = {}) => {
+  listProducts: (params: { q?: string; stock?: string; source?: string; category?: string; minPrice?: string; maxPrice?: string; sort?: ProductSort } = {}) => {
     const search = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) {
       if (v) search.set(k, String(v));

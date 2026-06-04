@@ -1,12 +1,26 @@
 'use client';
 
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  ArrowUpDown,
+  CheckCircle2,
+  Database,
+  Filter,
+  LayoutGrid,
+  PackageCheck,
+  Plus,
+  RefreshCw,
+  Search,
+  Store,
+  Table2,
+} from 'lucide-react';
 import { CATEGORY_LABELS } from '@barto/shared';
 import { apiClient, type Product, type ProductGroup, type ProductSort } from '../../lib/api';
 import { fmtAgo, fmtMoney, viewFreshness } from '../../lib/format';
 import { SiteIcon } from '@/components/site-icon';
+import { CategoryIcon } from '@/components/category-icon';
 
 const STOCK_LABELS: Record<string, { label: string; cls: string }> = {
   in_stock: { label: '有货', cls: 'badge-green' },
@@ -30,6 +44,9 @@ function ProductsInner() {
   const sort = (searchParams.get('sort') as ProductSort) ?? 'available';
   const category = searchParams.get('category') ?? '';
   const view = searchParams.get('view') ?? 'table';
+  const stockFilter = searchParams.get('stock') ?? '';
+  const minPrice = searchParams.get('minPrice') ?? '';
+  const maxPrice = searchParams.get('maxPrice') ?? '';
 
   const [qInput, setQInput] = useState(q);
   const [refreshingIds, setRefreshingIds] = useState<Set<number>>(new Set());
@@ -59,8 +76,16 @@ function ProductsInner() {
   const { data: catData } = useQuery({ queryKey: ['categories'], queryFn: () => apiClient.categories(), refetchInterval: 60_000 });
   const { data: groupsData } = useQuery({ queryKey: ['groups'], queryFn: () => apiClient.listGroups(), refetchInterval: 30_000 });
   const { data, isLoading } = useQuery({
-    queryKey: ['products', q, sort, category],
-    queryFn: () => apiClient.listProducts({ q, sort, category: category || undefined }),
+    queryKey: ['products', q, sort, category, stockFilter, minPrice, maxPrice],
+    queryFn: () =>
+      apiClient.listProducts({
+        q,
+        sort,
+        category: category || undefined,
+        stock: stockFilter || undefined,
+        minPrice: minPrice || undefined,
+        maxPrice: maxPrice || undefined,
+      }),
     refetchInterval: refreshingIds.size > 0 ? 2_000 : 30_000,
   });
 
@@ -111,10 +136,16 @@ function ProductsInner() {
   const catCounts = catData?.data ?? {};
   const catTotal = catData?.total ?? 0;
   const activeCats = CAT_ORDER.filter((c) => (catCounts[c] ?? 0) > 0);
+  const activeFilterCount = [stockFilter, minPrice, maxPrice].filter(Boolean).length;
+
+  const resetFilters = () => {
+    setQInput('');
+    router.replace('/products');
+  };
 
   return (
     <div>
-      {/* 品牌头 + 右上 Metric */}
+      {/* 品牌头 + 右上 Metric（带图标卡片，对齐 PriceAI）*/}
       <div className="brand-head">
         <div className="brand-mark">
           <div className="brand-logo">🛰</div>
@@ -125,21 +156,23 @@ function ProductsInner() {
         </div>
         {summary ? (
           <div className="metrics-top">
-            <div className="metric-top"><span className="label">商品组</span><span className="value">{groups.length}</span></div>
-            <div className="metric-top"><span className="label">报价</span><span className="value">{summary.total}</span></div>
-            <div className="metric-top"><span className="label">有货</span><span className="value green">{summary.inStock}</span></div>
-            <div className="metric-top"><span className="label">缺货</span><span className="value red">{summary.outOfStock}</span></div>
+            <Metric label="商品组" value={groups.length} icon={<PackageCheck size={15} />} />
+            <Metric label="报价" value={summary.total} icon={<Database size={15} />} />
+            <Metric label="有货" value={summary.inStock} icon={<CheckCircle2 size={15} />} tone="green" />
+            <Metric label="缺货" value={summary.outOfStock} icon={<Store size={15} />} tone="red" />
           </div>
         ) : null}
       </div>
 
-      {/* 分类 tab 栏 */}
+      {/* 分类 tab 栏（带平台图标）*/}
       <div className="cat-tabs">
         <button className={`cat-tab ${!category ? 'active' : ''}`} onClick={() => setParam({ category: '' })}>
+          <CategoryIcon category="all" />
           全部 <span className="cat-count">{catTotal}</span>
         </button>
         {activeCats.map((c) => (
           <button key={c} className={`cat-tab ${category === c ? 'active' : ''}`} onClick={() => setParam({ category: c })}>
+            <CategoryIcon category={c} />
             {CATEGORY_LABELS[c as keyof typeof CATEGORY_LABELS] ?? c} <span className="cat-count">{catCounts[c]}</span>
           </button>
         ))}
@@ -147,46 +180,90 @@ function ProductsInner() {
 
       <div className="row space" style={{ marginBottom: 6 }}>
         <h1 style={{ margin: 0 }}>全平台 标准商品报价</h1>
-        <div className="row">
-          <button onClick={() => refreshAll.mutate()} disabled={refreshAll.isPending}>
-            {refreshAll.isPending ? '触发中…' : '全量刷新'}
-          </button>
-          <a className="button cta" href="/import">+ 导入 URL</a>
-        </div>
       </div>
       <p className="muted" style={{ margin: '0 0 20px', fontSize: 13 }}>主价格优先取有货最低价，缺货会明显标注</p>
 
-      {/* 工具栏 */}
+      {/* 工具栏（图标化，对齐 PriceAI）*/}
       <div className="toolbar">
-        <input
-          className="grow"
-          placeholder="🔍  搜索 ChatGPT、Gemini、邮箱…"
-          value={qInput}
-          onChange={(e) => setQInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && setParam({ q: qInput })}
-          onBlur={() => setParam({ q: qInput })}
-        />
-        <button onClick={() => setShowFilter((v) => !v)}>⚲ 筛选</button>
+        <label className="search-field grow">
+          <Search size={16} className="search-icon" />
+          <input
+            placeholder="搜索 ChatGPT、Gemini、邮箱…"
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && setParam({ q: qInput })}
+            onBlur={() => setParam({ q: qInput })}
+          />
+        </label>
+        <button className="pill-tonal" onClick={() => setShowFilter((v) => !v)}>
+          <Filter size={16} /> 筛选{activeFilterCount ? ` ${activeFilterCount}` : ''}
+        </button>
         <div className="segmented">
-          {SORT_OPTIONS.map((o) => (
-            <button key={o.value} className={sort === o.value ? 'active' : ''} onClick={() => setParam({ sort: o.value })}>{o.label}</button>
-          ))}
+          <button className={view === 'card' ? 'active' : ''} onClick={() => setParam({ view: 'card' })}>
+            <LayoutGrid size={15} /> 卡片
+          </button>
+          <button className={view === 'table' ? 'active' : ''} onClick={() => setParam({ view: 'table' })}>
+            <Table2 size={15} /> 表格
+          </button>
         </div>
-        <div className="segmented">
-          <button className={view === 'card' ? 'active' : ''} onClick={() => setParam({ view: 'card' })}>卡片</button>
-          <button className={view === 'table' ? 'active' : ''} onClick={() => setParam({ view: 'table' })}>表格</button>
-        </div>
+        <label className="pill-tonal sort-select">
+          <ArrowUpDown size={16} />
+          <select value={sort} onChange={(e) => setParam({ sort: e.target.value })}>
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </label>
+        <button className="pill-tonal" onClick={() => refreshAll.mutate()} disabled={refreshAll.isPending}>
+          <RefreshCw size={15} className={refreshAll.isPending ? 'spin' : ''} /> {refreshAll.isPending ? '触发中…' : '全量刷新'}
+        </button>
+        <a className="button cta" href="/import"><Plus size={16} /> 导入 URL</a>
       </div>
 
       {showFilter ? (
-        <div className="panel" style={{ padding: 16, marginBottom: 16, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className="muted" style={{ fontSize: 12 }}>库存</span>
-          <div className="segmented">
-            <button className={!searchParams.get('stock') ? 'active' : ''} onClick={() => setParam({ stock: '' })}>全部</button>
-            <button className={searchParams.get('stock') === 'in_stock' ? 'active' : ''} onClick={() => setParam({ stock: 'in_stock' })}>有货</button>
-            <button className={searchParams.get('stock') === 'out_of_stock' ? 'active' : ''} onClick={() => setParam({ stock: 'out_of_stock' })}>缺货</button>
-          </div>
-          <button onClick={() => { setQInput(''); router.replace('/products'); }}>重置全部</button>
+        <div className="filter-grid">
+          <label className="filter-field">
+            <span>商品类型</span>
+            <select value={category} onChange={(e) => setParam({ category: e.target.value })}>
+              <option value="">全部</option>
+              {activeCats.map((c) => (
+                <option key={c} value={c}>{CATEGORY_LABELS[c as keyof typeof CATEGORY_LABELS] ?? c}</option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>库存</span>
+            <select value={stockFilter} onChange={(e) => setParam({ stock: e.target.value })}>
+              <option value="">全部库存</option>
+              <option value="in_stock">有货</option>
+              <option value="out_of_stock">缺货</option>
+            </select>
+          </label>
+          <label className="filter-field">
+            <span>最低价</span>
+            <input
+              type="number"
+              min="0"
+              inputMode="decimal"
+              placeholder="¥"
+              defaultValue={minPrice}
+              onBlur={(e) => setParam({ minPrice: e.target.value.trim() })}
+              onKeyDown={(e) => e.key === 'Enter' && setParam({ minPrice: (e.target as HTMLInputElement).value.trim() })}
+            />
+          </label>
+          <label className="filter-field">
+            <span>最高价</span>
+            <input
+              type="number"
+              min="0"
+              inputMode="decimal"
+              placeholder="¥"
+              defaultValue={maxPrice}
+              onBlur={(e) => setParam({ maxPrice: e.target.value.trim() })}
+              onKeyDown={(e) => e.key === 'Enter' && setParam({ maxPrice: (e.target as HTMLInputElement).value.trim() })}
+            />
+          </label>
+          <button className="filter-reset" onClick={resetFilters}>重置筛选</button>
         </div>
       ) : null}
 
@@ -276,6 +353,15 @@ function ProductsInner() {
           ))}</tbody>
         </table>
       )}
+    </div>
+  );
+}
+
+function Metric({ label, value, icon, tone }: { label: string; value: number; icon: ReactNode; tone?: 'green' | 'red' }) {
+  return (
+    <div className="metric-top">
+      <span className="label">{icon}{label}</span>
+      <span className={`value ${tone ?? ''}`}>{value}</span>
     </div>
   );
 }

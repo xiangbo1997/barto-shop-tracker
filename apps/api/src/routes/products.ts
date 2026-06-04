@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db, products, priceHistory, recomputeGroupLowestPrice } from '@barto/db';
-import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 export const productsRoute = new Hono();
@@ -10,6 +10,9 @@ const listQuerySchema = z.object({
   stock: z.enum(['in_stock', 'out_of_stock', 'unknown']).optional(),
   source: z.string().trim().optional(),
   category: z.string().trim().optional(),
+  // 价格区间过滤（人民币展示价；设置任一边界即排除无价商品）。
+  minPrice: z.coerce.number().min(0).optional(),
+  maxPrice: z.coerce.number().min(0).optional(),
   // available：有货优先 + 低价（默认，对应 PRODUCT 第 1 原则"可用价优先"）
   // price：纯价格升序；updated：最近更新；created：导入时间
   sort: z.enum(['available', 'price', 'updated', 'created']).default('available'),
@@ -41,7 +44,7 @@ productsRoute.get('/', async (c) => {
   if (!parsed.success) {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
-  const { q, stock, source, category, sort, limit, offset } = parsed.data;
+  const { q, stock, source, category, minPrice, maxPrice, sort, limit, offset } = parsed.data;
 
   const conditions = [];
   if (q) {
@@ -53,6 +56,9 @@ productsRoute.get('/', async (c) => {
   if (stock) conditions.push(eq(products.stockStatus, stock));
   if (source) conditions.push(eq(products.sourceSite, source));
   if (category) conditions.push(eq(products.category, category));
+  // numeric 列与 number 比较：drizzle 期望字符串值，转字符串传入。
+  if (minPrice != null) conditions.push(gte(products.currentPrice, String(minPrice)));
+  if (maxPrice != null) conditions.push(lte(products.currentPrice, String(maxPrice)));
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 

@@ -151,8 +151,9 @@ tr.out-of-stock:hover td { background: #f9f1f0; }
 .brand-name { font-family: var(--font-serif); font-size: 26px; font-weight: 600; color: var(--ink); line-height: 1; }
 .brand-sub { font-size: 12px; color: var(--muted); margin-top: 3px; letter-spacing: 0.08em; }
 .metrics-top { display: flex; gap: 10px; flex-wrap: wrap; }
-.metric-top { display: flex; flex-direction: column; gap: 2px; padding: 10px 16px; background: var(--surface); border-radius: 12px; min-width: 84px; }
-.metric-top .label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.metric-top { display: flex; flex-direction: column; gap: 3px; padding: 10px 16px; background: var(--surface); border-radius: 12px; min-width: 84px; }
+.metric-top .label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.metric-top .label svg { flex-shrink: 0; }
 .metric-top .value { font-size: 1.35rem; font-weight: 800; color: var(--ink); line-height: 1.1; }
 .metric-top .value.green { color: var(--green); }
 .metric-top .value.red { color: var(--red); }
@@ -181,7 +182,8 @@ tr.out-of-stock:hover td { background: #f9f1f0; }
 
 /* ── 分类 tab 栏 ── */
 .cat-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 8px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-.cat-tab { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 16px; border-radius: 9999px; font-size: 14px; font-weight: 600; color: var(--muted); background: transparent; white-space: nowrap; cursor: pointer; border: none; }
+.cat-tab { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 16px; border-radius: 9999px; font-size: 14px; font-weight: 600; color: var(--muted); background: transparent; white-space: nowrap; cursor: pointer; border: none; }
+.cat-tab svg, .cat-tab img { flex-shrink: 0; }
 .cat-tab:hover { background: var(--surface); color: var(--fg); }
 .cat-tab.active { background: var(--surface-selected); color: var(--ink); }
 .cat-tab .cat-count { font-size: 11px; color: var(--muted); font-weight: 600; }
@@ -231,6 +233,40 @@ tr.out-of-stock:hover td { background: #f9f1f0; }
 .segmented button { height: 32px; padding: 0 14px; background: transparent; border-radius: 9999px; font-size: 13px; font-weight: 600; color: var(--muted); }
 .segmented button.active { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(45,52,53,0.1); }
 .segmented button:hover { background: rgba(255,255,255,0.6); }
+.segmented button svg { flex-shrink: 0; }
+
+/* ── 搜索框（带前置图标的 pill）── */
+.search-field {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 16px;
+  background: #fff; border: 1px solid var(--border-strong); border-radius: 9999px;
+}
+.search-field:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(32, 40, 41, 0.08); }
+.search-field .search-icon { color: var(--muted); flex-shrink: 0; }
+.search-field input { flex: 1; min-width: 0; height: auto; padding: 0; border: none; background: transparent; }
+.search-field input:focus { outline: none; box-shadow: none; }
+
+/* ── 工具栏图标 pill 按钮 ── */
+.pill-tonal { gap: 7px; }
+.pill-tonal svg { flex-shrink: 0; }
+/* 排序下拉（图标 + 原生 select）*/
+.sort-select { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px; background: var(--surface); border: 1px solid transparent; border-radius: 9999px; cursor: pointer; }
+.sort-select:hover { background: var(--surface-selected); }
+.sort-select select { height: auto; padding: 0 4px 0 0; border: none; background: transparent; font-size: 13px; font-weight: 600; color: var(--fg); cursor: pointer; }
+.sort-select select:focus { outline: none; box-shadow: none; }
+.spin { animation: spin 0.7s linear infinite; }
+
+/* ── 展开筛选区（网格表单，对齐 PriceAI）── */
+.filter-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;
+  padding: 18px; margin-bottom: 18px;
+  background: var(--surface); border-radius: 14px;
+}
+.filter-field { display: flex; flex-direction: column; gap: 8px; }
+.filter-field > span { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.filter-field select, .filter-field input { height: 46px; width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 9999px; padding: 0 16px; }
+.filter-reset { align-self: end; height: 46px; background: #fff; border: 1px solid var(--border); border-radius: 9999px; }
+.filter-reset:hover { background: var(--surface-selected); }
 
 /* ── 空状态 ── */
 .empty {
