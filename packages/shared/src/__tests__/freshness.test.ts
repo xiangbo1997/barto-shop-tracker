@@ -77,11 +77,14 @@ import { classifyTitle, CATEGORY } from '../index.ts';
 
 describe('classifyTitle', () => {
   test('API/CDK', () => expect(classifyTitle('中转1刀 API额度')).toBe(CATEGORY.API_CREDIT));
+  test('接码', () => expect(classifyTitle('美国接码 短信验证码')).toBe(CATEGORY.SMS));
   test('邮箱', () => expect(classifyTitle('微软邮箱（张密）')).toBe(CATEGORY.EMAIL));
-  test('ChatGPT Plus → AI 账号', () => expect(classifyTitle('ChatGPT Plus 成品号')).toBe(CATEGORY.AI_ACCOUNT));
-  test('Claude 普号', () => expect(classifyTitle('Claude 普号 账密直登')).toBe(CATEGORY.AI_ACCOUNT));
-  test('Gemini', () => expect(classifyTitle('Gemini Pro 一年会员')).toBe(CATEGORY.AI_ACCOUNT));
+  test('ChatGPT', () => expect(classifyTitle('ChatGPT Plus 成品号')).toBe(CATEGORY.CHATGPT));
+  test('Claude', () => expect(classifyTitle('Claude 普号 账密直登')).toBe(CATEGORY.CLAUDE));
+  test('Gemini', () => expect(classifyTitle('Gemini Pro 一年会员')).toBe(CATEGORY.GEMINI));
+  test('Grok', () => expect(classifyTitle('Super Grok 月卡')).toBe(CATEGORY.GROK));
   test('订阅', () => expect(classifyTitle('Netflix 4K 独享车')).toBe(CATEGORY.SUBSCRIPTION));
+  test('其他账号', () => expect(classifyTitle('TikTok 直登成品号')).toBe(CATEGORY.ACCOUNT));
   test('无标题→other', () => expect(classifyTitle(null)).toBe(CATEGORY.OTHER));
   test('海淘实物→other', () => expect(classifyTitle('日本制 保温杯')).toBe(CATEGORY.OTHER));
 });

@@ -109,9 +109,14 @@ export const SOURCE_FAILING_THRESHOLD = 3;
 // ─────────────────────────────────────────────
 
 export const CATEGORY = {
-  AI_ACCOUNT: 'ai-account',
+  CHATGPT: 'chatgpt',
+  CLAUDE: 'claude',
+  GEMINI: 'gemini',
+  GROK: 'grok',
   API_CREDIT: 'api-credit',
   EMAIL: 'email',
+  SMS: 'sms',
+  ACCOUNT: 'account',
   SUBSCRIPTION: 'subscription',
   PHYSICAL: 'physical',
   OTHER: 'other',
@@ -120,26 +125,32 @@ export const CATEGORY = {
 export type Category = (typeof CATEGORY)[keyof typeof CATEGORY];
 
 export const CATEGORY_LABELS: Record<Category, string> = {
-  'ai-account': 'AI 账号',
-  'api-credit': 'API / 额度',
+  chatgpt: 'ChatGPT',
+  claude: 'Claude',
+  gemini: 'Gemini',
+  grok: 'Grok',
+  'api-credit': 'API / CDK',
   email: '邮箱',
+  sms: '接码',
+  account: '其他账号',
   subscription: '订阅 / 会员',
   physical: '实物',
   other: '其他',
 };
 
 // 关键词规则（按数组顺序优先匹配；命中即返回）。标题转小写后匹配。
+// 顺序要点：先匹配更具体的（API/CDK、接码、邮箱、各 AI 平台），ChatGPT 因 "gpt" 宽泛放 AI 平台末尾。
 const CATEGORY_RULES: Array<{ category: Category; keywords: string[] }> = [
-  { category: CATEGORY.API_CREDIT, keywords: ['api', 'cdk', '额度', '中转', 'token', 'key', '余额', 'codex api'] },
-  { category: CATEGORY.EMAIL, keywords: ['邮箱', 'gmail', 'outlook', 'hotmail', 'email', '谷歌邮箱', 'microsoft 邮箱'] },
-  {
-    category: CATEGORY.AI_ACCOUNT,
-    keywords: [
-      'chatgpt', 'gpt', 'claude', 'gemini', 'grok', 'openai', 'plus', 'pro 会员', 'super grok',
-      '普号', '成品号', '账号', '账密', '直登', 'ai ', '会员号',
-    ],
-  },
-  { category: CATEGORY.SUBSCRIPTION, keywords: ['月卡', '年卡', '会员', '订阅', '充值', 'netflix', 'spotify', '续费'] },
+  { category: CATEGORY.API_CREDIT, keywords: ['api', 'cdk', '额度', '中转', '余额', 'codex api', 'key 充值'] },
+  { category: CATEGORY.SMS, keywords: ['接码', '验证码', '短信', 'sms', '收码', '手机号码'] },
+  { category: CATEGORY.EMAIL, keywords: ['邮箱', 'gmail', 'outlook', 'hotmail', '谷歌邮箱', '微软邮箱', 'edu 邮箱'] },
+  { category: CATEGORY.CLAUDE, keywords: ['claude', 'sonnet', 'opus'] },
+  { category: CATEGORY.GEMINI, keywords: ['gemini', 'pixel', 'google ai', 'bard', 'aistudio'] },
+  { category: CATEGORY.GROK, keywords: ['grok', 'super grok', 'x.ai'] },
+  { category: CATEGORY.CHATGPT, keywords: ['chatgpt', 'gpt', 'openai', 'plus 月卡', 'chat gpt', 'sora', 'codex'] },
+  { category: CATEGORY.SUBSCRIPTION, keywords: ['月卡', '年卡', '会员', '订阅', 'netflix', 'spotify', 'youtube', '续费', 'disney'] },
+  // 兜底账号类（前面平台未命中但明显是账号）
+  { category: CATEGORY.ACCOUNT, keywords: ['普号', '成品号', '账号', '账密', '直登', '会员号', 'tiktok', '账户'] },
 ];
 
 /**
