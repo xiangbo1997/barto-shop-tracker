@@ -75,6 +75,9 @@ export const apiClient = {
     return api<ProductListResponse>(`/products?${search.toString()}`);
   },
   categories: () => api<{ data: Record<string, number>; total: number }>('/products/categories'),
+  deleteProduct: (id: number) => api<{ deleted: number }>(`/products/${id}`, { method: 'DELETE' }),
+  deleteProducts: (ids: number[]) =>
+    api<{ deleted: number }>('/products/delete-batch', { method: 'POST', body: JSON.stringify({ ids }) }),
   ingest: (urls: string[]) =>
     api<{ accepted: number; rejected: number; items: Array<{ id: number; url: string; isNew: boolean }>; failed: Array<{ url: string; reason: string }> }>(
       '/ingest',

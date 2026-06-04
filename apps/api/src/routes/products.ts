@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db, products, priceHistory, recomputeGroupLowestPrice } from '@barto/db';
-import { and, asc, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 export const productsRoute = new Hono();
@@ -174,6 +174,25 @@ productsRoute.patch('/:id', async (c) => {
   for (const gid of affected) await recomputeGroupLowestPrice(gid);
 
   return c.json({ data: updated[0] });
+});
+
+/** POST /products/delete-batch —— 批量删除（多选）。删后重算受影响的组最低价。 */
+productsRoute.post('/delete-batch', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { ids?: unknown };
+  const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is number => typeof x === 'number') : [];
+  if (ids.length === 0) return c.json({ error: 'ids 必填' }, 400);
+
+  // 记录涉及的组，删后重算最低价
+  const affected = await db
+    .select({ groupId: products.groupId })
+    .from(products)
+    .where(inArray(products.id, ids));
+  const groupIds = [...new Set(affected.map((r) => r.groupId).filter((g): g is number => g != null))];
+
+  const deleted = await db.delete(products).where(inArray(products.id, ids)).returning({ id: products.id });
+  for (const gid of groupIds) await recomputeGroupLowestPrice(gid);
+
+  return c.json({ deleted: deleted.length });
 });
 
 productsRoute.delete('/:id', async (c) => {

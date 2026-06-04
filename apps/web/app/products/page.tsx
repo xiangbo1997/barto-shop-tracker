@@ -34,7 +34,15 @@ function ProductsInner() {
   const [qInput, setQInput] = useState(q);
   const [refreshingIds, setRefreshingIds] = useState<Set<number>>(new Set());
   const [showFilter, setShowFilter] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
   const queryClient = useQueryClient();
+
+  const toggleSel = (id: number) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
 
   const setParam = useCallback(
     (patch: Record<string, string>) => {
@@ -77,10 +85,29 @@ function ProductsInner() {
     },
   });
 
+  const delBatch = useMutation({
+    mutationFn: async (ids: number[]) => apiClient.deleteProducts(ids),
+    onSuccess: () => {
+      setSelected(new Set());
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+  const delOne = useMutation({
+    mutationFn: async (id: number) => apiClient.deleteProduct(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+
   const products: Product[] = data?.data ?? [];
   const summary = data?.summary;
   const groups: ProductGroup[] = groupsData?.data ?? [];
   const ungrouped = products.filter((p) => p.groupId == null);
+  const allSelected = ungrouped.length > 0 && ungrouped.every((p) => selected.has(p.id));
+  const toggleAll = () =>
+    setSelected((s) => (allSelected ? new Set() : new Set(ungrouped.map((p) => p.id))));
   const catCounts = catData?.data ?? {};
   const catTotal = catData?.total ?? 0;
   const activeCats = CAT_ORDER.filter((c) => (catCounts[c] ?? 0) > 0);
@@ -191,6 +218,21 @@ function ProductsInner() {
       <div className="section-divider">
         <span className="label">未归组商品</span>
         <span className="count">{ungrouped.length} 个</span>
+        {selected.size > 0 ? (
+          <div className="row" style={{ marginLeft: 'auto', gap: 8 }}>
+            <span className="muted" style={{ fontSize: 13 }}>已选 {selected.size} 项</span>
+            <button
+              onClick={() => {
+                if (confirm(`确认删除选中的 ${selected.size} 个商品？`)) delBatch.mutate([...selected]);
+              }}
+              disabled={delBatch.isPending}
+              style={{ color: 'var(--red)' }}
+            >
+              {delBatch.isPending ? '删除中…' : '删除选中'}
+            </button>
+            <button onClick={() => setSelected(new Set())}>取消</button>
+          </div>
+        ) : null}
       </div>
       {isLoading ? (
         <div className="empty">加载中…</div>
@@ -202,12 +244,36 @@ function ProductsInner() {
       ) : view === 'card' ? (
         <div className="group-grid">
           {ungrouped.map((p) => (
-            <ProductCard key={p.id} p={p} refreshing={refreshingIds.has(p.id)} onRefresh={() => refreshOne.mutate(p.id)} />
+            <ProductCard
+              key={p.id}
+              p={p}
+              refreshing={refreshingIds.has(p.id)}
+              onRefresh={() => refreshOne.mutate(p.id)}
+              onDelete={() => { if (confirm('删除该商品？')) delOne.mutate(p.id); }}
+            />
           ))}
         </div>
       ) : (
         <table>
-          <tbody>{ungrouped.map((p) => <ProductRow key={p.id} p={p} refreshing={refreshingIds.has(p.id)} onRefresh={() => refreshOne.mutate(p.id)} />)}</tbody>
+          <thead>
+            <tr>
+              <th style={{ width: 36 }}>
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} title="全选" />
+              </th>
+              <th></th><th>商品</th><th>价格</th><th>库存</th><th>更新</th><th style={{ textAlign: 'right' }}>操作</th>
+            </tr>
+          </thead>
+          <tbody>{ungrouped.map((p) => (
+            <ProductRow
+              key={p.id}
+              p={p}
+              refreshing={refreshingIds.has(p.id)}
+              onRefresh={() => refreshOne.mutate(p.id)}
+              selected={selected.has(p.id)}
+              onToggleSel={() => toggleSel(p.id)}
+              onDelete={() => { if (confirm('删除该商品？')) delOne.mutate(p.id); }}
+            />
+          ))}</tbody>
         </table>
       )}
     </div>
@@ -289,7 +355,7 @@ function GroupCard({ group }: { group: ProductGroup }) {
   );
 }
 
-function ProductCard({ p, refreshing, onRefresh }: { p: Product; refreshing: boolean; onRefresh: () => void }) {
+function ProductCard({ p, refreshing, onRefresh, onDelete }: { p: Product; refreshing: boolean; onRefresh: () => void; onDelete: () => void }) {
   const inStock = p.stockStatus === 'in_stock';
   const fresh = viewFreshness(p);
   const sl = STOCK_LABELS[p.stockStatus] ?? STOCK_LABELS.unknown!;
@@ -320,18 +386,20 @@ function ProductCard({ p, refreshing, onRefresh }: { p: Product; refreshing: boo
         <div className="row" style={{ gap: 4 }}>
           <button className="icon" onClick={onRefresh} disabled={refreshing} title="刷新">{refreshing ? <span className="spinner" /> : '↻'}</button>
           <a className="button icon" href={p.url} target="_blank" rel="noreferrer" title="跳转原站">↗</a>
+          <button className="icon" onClick={onDelete} title="删除" style={{ color: 'var(--red)' }}>✕</button>
         </div>
       </div>
     </div>
   );
 }
 
-function ProductRow({ p, refreshing, onRefresh }: { p: Product; refreshing: boolean; onRefresh: () => void }) {
+function ProductRow({ p, refreshing, onRefresh, selected, onToggleSel, onDelete }: { p: Product; refreshing: boolean; onRefresh: () => void; selected: boolean; onToggleSel: () => void; onDelete: () => void }) {
   const inStock = p.stockStatus === 'in_stock';
   const fresh = viewFreshness(p);
   const sl = STOCK_LABELS[p.stockStatus] ?? STOCK_LABELS.unknown!;
   return (
     <tr className={p.stockStatus === 'out_of_stock' ? 'out-of-stock' : ''}>
+      <td style={{ width: 36 }}><input type="checkbox" checked={selected} onChange={onToggleSel} /></td>
       <td style={{ width: 56 }}><SiteIcon sourceSite={p.sourceSite} /></td>
       <td>
         <div className="group-title" style={{ fontWeight: 600 }}>{p.title ?? <span className="muted">(无标题)</span>}</div>
@@ -347,6 +415,7 @@ function ProductRow({ p, refreshing, onRefresh }: { p: Product; refreshing: bool
         <div className="row" style={{ gap: 4, justifyContent: 'flex-end' }}>
           <button className="icon" onClick={onRefresh} disabled={refreshing} title="刷新">{refreshing ? <span className="spinner" /> : '↻'}</button>
           <a className="button icon" href={p.url} target="_blank" rel="noreferrer" title="跳转原站">↗</a>
+          <button className="icon" onClick={onDelete} title="删除" style={{ color: 'var(--red)' }}>✕</button>
         </div>
       </td>
     </tr>

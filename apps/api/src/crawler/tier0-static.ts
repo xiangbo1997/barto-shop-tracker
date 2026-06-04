@@ -1,6 +1,7 @@
 import { FETCH_TIER, type ScrapeResult } from '@barto/shared';
 import { parseJsonLd } from './jsonld.ts';
 import { parseOpenGraph } from './og.ts';
+import { parseStockStatus } from './normalize.ts';
 
 const DEFAULT_HEADERS: Record<string, string> = {
   'User-Agent':
@@ -60,21 +61,41 @@ export function isHit(result: ScrapeResult): boolean {
   return Boolean(result.title) && result.price !== null;
 }
 
+/** 剥 HTML 标签得到纯文本（用于从正文提取库存等关键词）。 */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
 /**
  * 从 HTML 解析出 ScrapeResult（JSON-LD + OpenGraph 合并）。
  * 供 Tier 0（本地 fetch 的 HTML）与 Tier 2（scrape 平台返回的 HTML）共用。
+ *
+ * 库存通用化：og/jsonld 拿不到库存时，回退到对正文文本跑 parseStockStatus，
+ * 识别中文卡站常见的「库存：N」「售罄」等格式（nodeexs/caowo/ldxp/maiguge 等通用）。
  */
 export function parseHtmlToResult(html: string, tierUsed: ScrapeResult['tierUsed']): ScrapeResult | null {
   const ld = parseJsonLd(html);
   const og = parseOpenGraph(html);
   if (!ld && !og) return null;
 
+  let stockStatus = ld?.stockStatus ?? og?.stockStatus ?? 'unknown';
+  if (stockStatus === 'unknown') {
+    // 回退：从正文文本提取库存（卡站库存在正文，不在 og/jsonld）。
+    const text = htmlToText(html).slice(0, 8000);
+    stockStatus = parseStockStatus(text);
+  }
+
   return {
     title: ld?.title ?? og?.title ?? null,
     price: ld?.price ?? og?.price ?? null,
     currency: ld?.currency ?? og?.currency ?? null,
     imageUrl: ld?.imageUrl ?? og?.imageUrl ?? null,
-    stockStatus: ld?.stockStatus ?? og?.stockStatus ?? 'unknown',
+    stockStatus,
     brand: ld?.brand ?? null,
     sku: ld?.sku ?? null,
     tierUsed,
