@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  Apple,
+  Coins,
   CreditCard,
   Layers3,
   Mail,
@@ -22,7 +24,10 @@ const ICON_BY_CATEGORY: Record<string, string> = {
 
 // 无品牌 SVG 的分类用 lucide 线性图标兜底，保持视觉一致。
 const LUCIDE_BY_CATEGORY: Record<string, ReactNode> = {
-  'api-credit': <CreditCard size={18} className="shrink-0 text-[#5a6061]" />,
+  // API/CDK 用代币图标（额度/中转语义），与虚拟卡的信用卡图标区分。
+  'api-credit': <Coins size={18} className="shrink-0 text-[#5a6061]" />,
+  'virtual-card': <CreditCard size={18} className="shrink-0 text-[#5a6061]" />,
+  'apple-id': <Apple size={18} className="shrink-0 text-[#5a6061]" />,
   sms: <MessageSquareText size={18} className="shrink-0 text-[#5a6061]" />,
   account: <UserCircle2 size={18} className="shrink-0 text-[#5a6061]" />,
   subscription: <Repeat size={18} className="shrink-0 text-[#5a6061]" />,

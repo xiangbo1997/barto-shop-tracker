@@ -114,6 +114,8 @@ export const CATEGORY = {
   GEMINI: 'gemini',
   GROK: 'grok',
   API_CREDIT: 'api-credit',
+  VIRTUAL_CARD: 'virtual-card',
+  APPLE_ID: 'apple-id',
   EMAIL: 'email',
   SMS: 'sms',
   ACCOUNT: 'account',
@@ -130,6 +132,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   gemini: 'Gemini',
   grok: 'Grok',
   'api-credit': 'API / CDK',
+  'virtual-card': '虚拟卡',
+  'apple-id': 'Apple ID',
   email: '邮箱',
   sms: '接码',
   account: '其他账号',
@@ -139,27 +143,47 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 };
 
 // 关键词规则（按数组顺序优先匹配；命中即返回）。标题转小写后匹配。
-// 顺序要点：先匹配更具体的（API/CDK、接码、邮箱、各 AI 平台），ChatGPT 因 "gpt" 宽泛放 AI 平台末尾。
+// 顺序要点（关键）：
+//  1) 虚拟卡 / Apple ID 关键词最具体，放最前。
+//  2) API/CDK 在 AI 平台之前——「ChatGPT API 额度」应归 API/CDK 而非 ChatGPT。
+//  3) AI 平台（含 gpt/claude/codex…）放在「接码 / 账号」之前——「GPT普号…不支持接码登录」
+//     这类账号商品主体是平台，不能因含"接码/账号/普号"字样被误归 SMS/账号。
+//  4) 真正的接码商品（如「单次接码」）标题不含平台词，仍由 SMS 命中。
 const CATEGORY_RULES: Array<{ category: Category; keywords: string[] }> = [
+  { category: CATEGORY.VIRTUAL_CARD, keywords: ['虚拟卡', '虚拟信用卡', 'visa', 'mastercard', '万事达', '事达卡', '购物卡', '一次性卡', 'vcc', '礼品卡', 'gift card'] },
+  { category: CATEGORY.APPLE_ID, keywords: ['apple id', 'appleid', 'apple 账号', 'apple账号', 'icloud', 'itunes', '苹果id', '苹果账号', 'app store'] },
   { category: CATEGORY.API_CREDIT, keywords: ['api', 'cdk', '额度', '中转', '余额', 'codex api', 'key 充值'] },
-  { category: CATEGORY.SMS, keywords: ['接码', '验证码', '短信', 'sms', '收码', '手机号码'] },
-  { category: CATEGORY.EMAIL, keywords: ['邮箱', 'gmail', 'outlook', 'hotmail', '谷歌邮箱', '微软邮箱', 'edu 邮箱'] },
   { category: CATEGORY.CLAUDE, keywords: ['claude', 'sonnet', 'opus'] },
   { category: CATEGORY.GEMINI, keywords: ['gemini', 'pixel', 'google ai', 'bard', 'aistudio'] },
   { category: CATEGORY.GROK, keywords: ['grok', 'super grok', 'x.ai'] },
   { category: CATEGORY.CHATGPT, keywords: ['chatgpt', 'gpt', 'openai', 'plus 月卡', 'chat gpt', 'sora', 'codex'] },
+  { category: CATEGORY.SMS, keywords: ['接码', '验证码', '短信', 'sms', '收码', '手机号码'] },
+  { category: CATEGORY.EMAIL, keywords: ['邮箱', 'gmail', 'outlook', 'hotmail', '谷歌邮箱', '微软邮箱', 'edu 邮箱'] },
   { category: CATEGORY.SUBSCRIPTION, keywords: ['月卡', '年卡', '会员', '订阅', 'netflix', 'spotify', 'youtube', '续费', 'disney'] },
   // 兜底账号类（前面平台未命中但明显是账号）
   { category: CATEGORY.ACCOUNT, keywords: ['普号', '成品号', '账号', '账密', '直登', '会员号', 'tiktok', '账户'] },
 ];
 
+// 账号类商品标志词：出现则说明卖的是"平台账号"，而非接码/邮箱等服务。
+// 用于消歧——「Codex普号…手机接码解锁」是账号（归平台），「Codex接码 单次接码」是接码服务（归 SMS）。
+const ACCOUNT_MARKERS = ['普号', '成品', '账密', '直登', '会员号', '账户', '账号'];
+const SMS_MARKERS = ['接码', '验证码', '短信', 'sms', '收码', '手机号码'];
+
 /**
  * 按标题关键词归类。无标题或无命中归 other。
  * 纯函数，供 worker（写入）与前端（展示标签）共用。
+ *
+ * 消歧规则：标题含接码标志词、且**不含**账号标志词时，优先判为接码服务（SMS）。
+ * 这样「XX接码 单次接码」归 SMS，而「Codex普号…接码登录」（账号）走后续平台规则归 ChatGPT。
  */
 export function classifyTitle(title: string | null | undefined): Category {
   if (!title) return CATEGORY.OTHER;
   const lower = title.toLowerCase();
+
+  const hasSms = SMS_MARKERS.some((k) => lower.includes(k));
+  const hasAccount = ACCOUNT_MARKERS.some((k) => lower.includes(k));
+  if (hasSms && !hasAccount) return CATEGORY.SMS;
+
   for (const rule of CATEGORY_RULES) {
     if (rule.keywords.some((k) => lower.includes(k))) return rule.category;
   }

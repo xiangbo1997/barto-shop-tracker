@@ -35,7 +35,7 @@ const SORT_OPTIONS: Array<{ value: ProductSort; label: string }> = [
 ];
 
 // 分类 tab 顺序（全部在前，其余按常见度）
-const CAT_ORDER = ['chatgpt', 'claude', 'gemini', 'grok', 'api-credit', 'email', 'sms', 'subscription', 'account', 'physical', 'other'];
+const CAT_ORDER = ['chatgpt', 'claude', 'gemini', 'grok', 'api-credit', 'virtual-card', 'apple-id', 'email', 'sms', 'subscription', 'account', 'physical', 'other'];
 
 function ProductsInner() {
   const router = useRouter();
