@@ -55,7 +55,9 @@ export async function fetchHtml(url: string, options: Tier0Options = {}): Promis
 }
 
 export function isHit(result: ScrapeResult): boolean {
-  return Boolean(result.title) && (result.price !== null || result.imageUrl !== null);
+  // 价格是比价工具的核心字段：要求有标题 + 有价格才算命中。
+  // 无价格（如 SPA 未渲染时抓到的站点 og 空壳）判未命中，触发下一层（Tier1→Tier2）兜底。
+  return Boolean(result.title) && result.price !== null;
 }
 
 /**
