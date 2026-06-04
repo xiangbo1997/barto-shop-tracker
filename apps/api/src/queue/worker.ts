@@ -107,6 +107,10 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
 
     const now = new Date();
 
+    // 失败时写入的错误信息：默认用抓取层的 fetchError，店铺展开失败时改用展开的精确原因
+    // （避免一律显示"需配置 LLM"这种误导信息）。
+    let effectiveError = outcome.fetchError;
+
     // 店铺/列表页：尝试 LLM 展开为多商品 + 自动建组。成功则结束本任务。
     if (!outcome.data && outcome.isShopListing) {
       const { expandShopListing } = await import('../crawler/expand.ts');
@@ -131,7 +135,8 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
         });
         return;
       }
-      // 展开失败（无 LLM 等）：落到下面的失败分支，写引导提示。
+      // 展开失败：用展开的精确原因覆盖错误信息，落到下面的失败分支。
+      if (result.error) effectiveError = result.error;
     }
 
     if (outcome.data) {
@@ -220,7 +225,7 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
       await db
         .update(products)
         .set({
-          fetchError: outcome.fetchError ?? 'unknown error',
+          fetchError: effectiveError ?? 'unknown error',
           freshnessStatus,
           lastFetchedAt: now,
           updatedAt: now,
@@ -232,13 +237,13 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
         await recomputeGroupLowestPrice(e.groupId);
       }
 
-      await recordSourceHealth({ host, ok: false, error: outcome.fetchError });
+      await recordSourceHealth({ host, ok: false, error: effectiveError });
       await writeCrawlRun({
         host,
         productId: payload.productId,
         triggeredBy: payload.triggeredBy,
         status: 'failed',
-        error: outcome.fetchError,
+        error: effectiveError,
         startedAt,
         finishedAt: new Date(),
         details: { attempts: outcome.attempts },
@@ -250,7 +255,7 @@ async function processRefresh(payload: RefreshProductPayload, jobId: string | nu
         jobId,
         url: payload.url,
         hit: false,
-        error: outcome.fetchError,
+        error: effectiveError,
         at: Date.now(),
       });
     }

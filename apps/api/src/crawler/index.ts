@@ -44,7 +44,7 @@ export async function scrape(url: string, options: ScrapeOptions = {}): Promise<
   if (looksLikeShopListing(url)) {
     return {
       data: null,
-      fetchError: '店铺/列表页：将尝试展开为多个商品（需配置 LLM）。',
+      fetchError: '店铺/列表页：将尝试展开为多个商品。',
       attempts,
       finalUrl,
       isShopListing: true,

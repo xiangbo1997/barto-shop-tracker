@@ -2,7 +2,7 @@ import { db, products } from '@barto/db';
 import { eq } from 'drizzle-orm';
 import { classifyTitle, computeExpiresAt, computeFreshness, FETCH_TIER } from '@barto/shared';
 import { getHostFromUrl } from './normalize.ts';
-import { expandListingWithLlm } from './llm-list.ts';
+import { expandListingWithLlm, expandFailMessage } from './llm-list.ts';
 
 export interface ExpandResult {
   expanded: number;
@@ -24,9 +24,10 @@ export interface ExpandResult {
  * @param parentProductId 触发展开的父 product（店铺页本身）
  */
 export async function expandShopListing(shopUrl: string, parentProductId: number): Promise<ExpandResult> {
-  const items = await expandListingWithLlm(shopUrl);
+  const { products: items, reason } = await expandListingWithLlm(shopUrl);
   if (items.length === 0) {
-    return { expanded: 0, error: 'LLM 未启用或未提取到商品' };
+    // reason 必非 null（items 为空时一定带原因），回传精确错误信息便于排查。
+    return { expanded: 0, error: reason ? expandFailMessage(reason) : '店铺/列表页：未提取到商品。' };
   }
 
   const host = getHostFromUrl(shopUrl);
