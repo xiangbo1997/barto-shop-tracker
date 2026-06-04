@@ -67,4 +67,20 @@ describe('parseStockStatus', () => {
   test('garbage returns unknown', () => {
     expect(parseStockStatus('foo bar baz')).toBe('unknown');
   });
+
+  test('库存：608 → in_stock（发卡站格式）', () => {
+    expect(parseStockStatus('¥3.99 库存：608已售：1499')).toBe('in_stock');
+  });
+
+  test('库存：0 → out_of_stock', () => {
+    expect(parseStockStatus('库存：0已售：6813')).toBe('out_of_stock');
+  });
+
+  test('剩余 5 → in_stock', () => {
+    expect(parseStockStatus('剩余 5 件')).toBe('in_stock');
+  });
+
+  test('明确售罄优先于库存数字', () => {
+    expect(parseStockStatus('库存：0 售罄')).toBe('out_of_stock');
+  });
 });

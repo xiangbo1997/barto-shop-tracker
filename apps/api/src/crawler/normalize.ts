@@ -84,9 +84,20 @@ const OUT_OF_STOCK_KEYWORDS = [
 
 export function parseStockStatus(raw: string | null | undefined): StockStatus {
   if (!raw) return 'unknown';
-  const lower = String(raw).toLowerCase().trim();
+  const str = String(raw).trim();
+  const lower = str.toLowerCase();
+
+  // 明确缺货关键词优先（售罄/缺货等）。
   if (OUT_OF_STOCK_KEYWORDS.some((k) => lower.includes(k))) return 'out_of_stock';
   if (IN_STOCK_KEYWORDS.some((k) => lower.includes(k))) return 'in_stock';
+
+  // 中文发卡站常见格式「库存：N」/「库存 N」/「剩余 N」（全角/半角冒号）。
+  // N>0 视为有货，N=0 视为缺货。覆盖 caowo / ldxp 等独角数卡类站点。
+  const stockMatch = str.match(/(?:库存|剩余|余量)\s*[:：]?\s*(\d+)/);
+  if (stockMatch) {
+    return Number(stockMatch[1]) > 0 ? 'in_stock' : 'out_of_stock';
+  }
+
   return 'unknown';
 }
 
