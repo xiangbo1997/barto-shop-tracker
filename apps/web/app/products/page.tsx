@@ -13,6 +13,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Star,
   Store,
   Table2,
 } from 'lucide-react';
@@ -47,6 +48,7 @@ function ProductsInner() {
   const stockFilter = searchParams.get('stock') ?? '';
   const minPrice = searchParams.get('minPrice') ?? '';
   const maxPrice = searchParams.get('maxPrice') ?? '';
+  const favOnly = searchParams.get('favorited') === '1';
 
   const [qInput, setQInput] = useState(q);
   const [refreshingIds, setRefreshingIds] = useState<Set<number>>(new Set());
@@ -76,7 +78,7 @@ function ProductsInner() {
   const { data: catData } = useQuery({ queryKey: ['categories'], queryFn: () => apiClient.categories(), refetchInterval: 60_000 });
   const { data: groupsData } = useQuery({ queryKey: ['groups'], queryFn: () => apiClient.listGroups(), refetchInterval: 30_000 });
   const { data, isLoading } = useQuery({
-    queryKey: ['products', q, sort, category, stockFilter, minPrice, maxPrice],
+    queryKey: ['products', q, sort, category, stockFilter, minPrice, maxPrice, favOnly],
     queryFn: () =>
       apiClient.listProducts({
         q,
@@ -85,6 +87,7 @@ function ProductsInner() {
         stock: stockFilter || undefined,
         minPrice: minPrice || undefined,
         maxPrice: maxPrice || undefined,
+        favorited: favOnly ? '1' : undefined,
       }),
     refetchInterval: refreshingIds.size > 0 ? 2_000 : 30_000,
   });
@@ -125,6 +128,14 @@ function ProductsInner() {
       void queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
   });
+  const toggleFav = useMutation({
+    mutationFn: async ({ id, favorited }: { id: number; favorited: boolean }) =>
+      apiClient.toggleFavorite(id, favorited),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
 
   const products: Product[] = data?.data ?? [];
   const summary = data?.summary;
@@ -135,6 +146,7 @@ function ProductsInner() {
     setSelected((s) => (allSelected ? new Set() : new Set(ungrouped.map((p) => p.id))));
   const catCounts = catData?.data ?? {};
   const catTotal = catData?.total ?? 0;
+  const favCount = catData?.favorited ?? 0;
   const activeCats = CAT_ORDER.filter((c) => (catCounts[c] ?? 0) > 0);
   const activeFilterCount = [stockFilter, minPrice, maxPrice].filter(Boolean).length;
 
@@ -164,18 +176,25 @@ function ProductsInner() {
         ) : null}
       </div>
 
-      {/* 分类 tab 栏（带平台图标）*/}
+      {/* 分类 tab 栏（带平台图标）+ 末尾「★ 收藏」页签 */}
       <div className="cat-tabs">
-        <button className={`cat-tab ${!category ? 'active' : ''}`} onClick={() => setParam({ category: '' })}>
+        <button className={`cat-tab ${!category && !favOnly ? 'active' : ''}`} onClick={() => setParam({ category: '', favorited: '' })}>
           <CategoryIcon category="all" />
           全部 <span className="cat-count">{catTotal}</span>
         </button>
         {activeCats.map((c) => (
-          <button key={c} className={`cat-tab ${category === c ? 'active' : ''}`} onClick={() => setParam({ category: c })}>
+          <button key={c} className={`cat-tab ${category === c && !favOnly ? 'active' : ''}`} onClick={() => setParam({ category: c, favorited: '' })}>
             <CategoryIcon category={c} />
             {CATEGORY_LABELS[c as keyof typeof CATEGORY_LABELS] ?? c} <span className="cat-count">{catCounts[c]}</span>
           </button>
         ))}
+        <button
+          className={`cat-tab cat-tab-fav ${favOnly ? 'active' : ''}`}
+          onClick={() => setParam({ favorited: favOnly ? '' : '1', category: '' })}
+        >
+          <Star size={16} className="fav-star" fill={favOnly ? 'currentColor' : 'none'} />
+          收藏 <span className="cat-count">{favCount}</span>
+        </button>
       </div>
 
       <div className="row space" style={{ marginBottom: 6 }}>
@@ -315,8 +334,8 @@ function ProductsInner() {
         <div className="empty">加载中…</div>
       ) : ungrouped.length === 0 ? (
         <div className="empty">
-          <div className="empty-title">{groups.length > 0 ? '全部已归组' : '还没有商品'}</div>
-          <div>放宽筛选，或 <a href="/import">导入第一批 URL →</a></div>
+          <div className="empty-title">{favOnly ? '还没有收藏的商品' : groups.length > 0 ? '全部已归组' : '还没有商品'}</div>
+          <div>{favOnly ? '点击商品行的 ☆ 即可收藏' : <>放宽筛选，或 <a href="/import">导入第一批 URL →</a></>}</div>
         </div>
       ) : view === 'card' ? (
         <div className="group-grid">
@@ -327,6 +346,7 @@ function ProductsInner() {
               refreshing={refreshingIds.has(p.id)}
               onRefresh={() => refreshOne.mutate(p.id)}
               onDelete={() => { if (confirm('删除该商品？')) delOne.mutate(p.id); }}
+              onToggleFav={() => toggleFav.mutate({ id: p.id, favorited: !p.favorited })}
             />
           ))}
         </div>
@@ -349,6 +369,7 @@ function ProductsInner() {
               selected={selected.has(p.id)}
               onToggleSel={() => toggleSel(p.id)}
               onDelete={() => { if (confirm('删除该商品？')) delOne.mutate(p.id); }}
+              onToggleFav={() => toggleFav.mutate({ id: p.id, favorited: !p.favorited })}
             />
           ))}</tbody>
         </table>
@@ -441,7 +462,7 @@ function GroupCard({ group }: { group: ProductGroup }) {
   );
 }
 
-function ProductCard({ p, refreshing, onRefresh, onDelete }: { p: Product; refreshing: boolean; onRefresh: () => void; onDelete: () => void }) {
+function ProductCard({ p, refreshing, onRefresh, onDelete, onToggleFav }: { p: Product; refreshing: boolean; onRefresh: () => void; onDelete: () => void; onToggleFav: () => void }) {
   const inStock = p.stockStatus === 'in_stock';
   const fresh = viewFreshness(p);
   const sl = STOCK_LABELS[p.stockStatus] ?? STOCK_LABELS.unknown!;
@@ -451,6 +472,14 @@ function ProductCard({ p, refreshing, onRefresh, onDelete }: { p: Product; refre
       <div className="gcard-head">
         <SiteIcon sourceSite={p.sourceSite} />
         <span className="gcard-title">{p.title ?? <span className="muted">(无标题)</span>}</span>
+        <button
+          className={`fav-btn ${p.favorited ? 'on' : ''}`}
+          onClick={onToggleFav}
+          title={p.favorited ? '取消收藏' : '收藏'}
+          style={{ marginLeft: 'auto' }}
+        >
+          <Star size={16} fill={p.favorited ? 'currentColor' : 'none'} />
+        </button>
       </div>
       <div>
         <div className={`gcard-price ${inStock && p.currentPrice ? '' : 'na'}`}>{fmtMoney(p.currentPrice, p.currency)}</div>
@@ -479,7 +508,7 @@ function ProductCard({ p, refreshing, onRefresh, onDelete }: { p: Product; refre
   );
 }
 
-function ProductRow({ p, refreshing, onRefresh, selected, onToggleSel, onDelete }: { p: Product; refreshing: boolean; onRefresh: () => void; selected: boolean; onToggleSel: () => void; onDelete: () => void }) {
+function ProductRow({ p, refreshing, onRefresh, selected, onToggleSel, onDelete, onToggleFav }: { p: Product; refreshing: boolean; onRefresh: () => void; selected: boolean; onToggleSel: () => void; onDelete: () => void; onToggleFav: () => void }) {
   const inStock = p.stockStatus === 'in_stock';
   const fresh = viewFreshness(p);
   const sl = STOCK_LABELS[p.stockStatus] ?? STOCK_LABELS.unknown!;
@@ -499,6 +528,9 @@ function ProductRow({ p, refreshing, onRefresh, selected, onToggleSel, onDelete 
       </td>
       <td style={{ textAlign: 'right' }}>
         <div className="row" style={{ gap: 4, justifyContent: 'flex-end' }}>
+          <button className={`icon fav-btn ${p.favorited ? 'on' : ''}`} onClick={onToggleFav} title={p.favorited ? '取消收藏' : '收藏'}>
+            <Star size={15} fill={p.favorited ? 'currentColor' : 'none'} />
+          </button>
           <button className="icon" onClick={onRefresh} disabled={refreshing} title="刷新">{refreshing ? <span className="spinner" /> : '↻'}</button>
           <a className="button icon" href={p.url} target="_blank" rel="noreferrer" title="跳转原站">↗</a>
           <button className="icon" onClick={onDelete} title="删除" style={{ color: 'var(--red)' }}>✕</button>

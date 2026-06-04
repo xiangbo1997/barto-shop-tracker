@@ -22,6 +22,7 @@ export interface Product {
   groupId: number | null;
   userNote: string | null;
   manuallyEdited: boolean;
+  favorited: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -67,14 +68,19 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const apiClient = {
-  listProducts: (params: { q?: string; stock?: string; source?: string; category?: string; minPrice?: string; maxPrice?: string; sort?: ProductSort } = {}) => {
+  listProducts: (params: { q?: string; stock?: string; source?: string; category?: string; minPrice?: string; maxPrice?: string; favorited?: string; sort?: ProductSort } = {}) => {
     const search = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) {
       if (v) search.set(k, String(v));
     }
     return api<ProductListResponse>(`/products?${search.toString()}`);
   },
-  categories: () => api<{ data: Record<string, number>; total: number }>('/products/categories'),
+  categories: () => api<{ data: Record<string, number>; total: number; favorited: number }>('/products/categories'),
+  toggleFavorite: (id: number, favorited: boolean) =>
+    api<{ data: { id: number; favorited: boolean } }>(`/products/${id}/favorite`, {
+      method: 'PATCH',
+      body: JSON.stringify({ favorited }),
+    }),
   deleteProduct: (id: number) => api<{ deleted: number }>(`/products/${id}`, { method: 'DELETE' }),
   deleteProducts: (ids: number[]) =>
     api<{ deleted: number }>('/products/delete-batch', { method: 'POST', body: JSON.stringify({ ids }) }),

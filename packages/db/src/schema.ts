@@ -57,6 +57,8 @@ export const products = pgTable(
     groupId: integer('group_id'),
     userNote: text('user_note'),
     manuallyEdited: boolean('manually_edited').default(false).notNull(),
+    // 用户收藏标记（买过/关注），用于「★ 收藏」筛选。重新抓取不会重置。
+    favorited: boolean('favorited').default(false).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -67,6 +69,7 @@ export const products = pgTable(
     stockIdx: index('products_stock_idx').on(t.stockStatus),
     freshnessIdx: index('products_freshness_idx').on(t.freshnessStatus),
     categoryIdx: index('products_category_idx').on(t.category),
+    favoritedIdx: index('products_favorited_idx').on(t.favorited),
   })
 );
 

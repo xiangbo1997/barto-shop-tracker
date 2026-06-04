@@ -13,6 +13,8 @@ const listQuerySchema = z.object({
   // 价格区间过滤（人民币展示价；设置任一边界即排除无价商品）。
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),
+  // 仅看收藏：'1'/'true' 时只返回已收藏商品。
+  favorited: z.enum(['1', 'true']).optional(),
   // available：有货优先 + 低价（默认，对应 PRODUCT 第 1 原则"可用价优先"）
   // price：纯价格升序；updated：最近更新；created：导入时间
   sort: z.enum(['available', 'price', 'updated', 'created']).default('available'),
@@ -44,7 +46,7 @@ productsRoute.get('/', async (c) => {
   if (!parsed.success) {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
-  const { q, stock, source, category, minPrice, maxPrice, sort, limit, offset } = parsed.data;
+  const { q, stock, source, category, minPrice, maxPrice, favorited, sort, limit, offset } = parsed.data;
 
   const conditions = [];
   if (q) {
@@ -59,6 +61,7 @@ productsRoute.get('/', async (c) => {
   // numeric 列与 number 比较：drizzle 期望字符串值，转字符串传入。
   if (minPrice != null) conditions.push(gte(products.currentPrice, String(minPrice)));
   if (maxPrice != null) conditions.push(lte(products.currentPrice, String(maxPrice)));
+  if (favorited) conditions.push(eq(products.favorited, true));
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -112,7 +115,13 @@ productsRoute.get('/categories', async (c) => {
     counts[key] = (counts[key] ?? 0) + r.count;
     total += r.count;
   }
-  return c.json({ data: counts, total });
+  // 收藏计数（供「★ 收藏」页签）。
+  const favRows = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(products)
+    .where(eq(products.favorited, true));
+  const favorited = favRows[0]?.count ?? 0;
+  return c.json({ data: counts, total, favorited });
 });
 
 productsRoute.get('/:id', async (c) => {
@@ -179,6 +188,25 @@ productsRoute.patch('/:id', async (c) => {
   if (newGroupId != null) affected.add(newGroupId);
   for (const gid of affected) await recomputeGroupLowestPrice(gid);
 
+  return c.json({ data: updated[0] });
+});
+
+const favoriteSchema = z.object({ favorited: z.boolean() });
+
+/** PATCH /products/:id/favorite —— 收藏/取消收藏（轻量，不触发 manuallyEdited）。 */
+productsRoute.patch('/:id/favorite', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isFinite(id)) return c.json({ error: 'invalid id' }, 400);
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = favoriteSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const updated = await db
+    .update(products)
+    .set({ favorited: parsed.data.favorited, updatedAt: new Date() })
+    .where(eq(products.id, id))
+    .returning({ id: products.id, favorited: products.favorited });
+  if (!updated[0]) return c.json({ error: 'not found' }, 404);
   return c.json({ data: updated[0] });
 });
 
