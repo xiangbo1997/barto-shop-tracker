@@ -91,7 +91,8 @@ export async function expandListingWithLlm(url: string): Promise<ExpandListingRe
   const markdown = await fetchListingMarkdown(url);
   if (!markdown || markdown.length < 30) return { products: [], reason: 'fetch_failed' };
 
-  const client = new OpenAI({ baseURL: llm.baseUrl, apiKey: llm.apiKey });
+  // timeout 30s + 不自动重试：LLM 故障（token 失效等）时快速失败，避免单任务卡住拖慢 worker 队列。
+  const client = new OpenAI({ baseURL: llm.baseUrl, apiKey: llm.apiKey, timeout: 30_000, maxRetries: 0 });
 
   let content: string;
   try {
